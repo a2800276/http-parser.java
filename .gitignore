@@ -2,3 +2,8 @@ tags
 *.o
 test
 test_g
+*.swo
+*.swp
+*.class
+TAGS
+a.out
