@@ -2516,11 +2516,6 @@ while (data.position() != data.limit()) {
           } else {
             if (type == ParserType.HTTP_REQUEST || http_should_keep_alive()) {
               /* Assume content-length 0 - read the next */
-try {
-throw new RuntimeException();
-}catch (Throwable t) {
-	t.printStackTrace();
-}
 							settings.call_on_message_complete(this);
               state = new_message(); 
             } else {

@@ -65,7 +65,7 @@ public class TestLoader {
 			
 				else if ("fragment".equals(key))     {curr.fragment = value;}
 				else if ("query_string".equals(key)) {curr.query_string = value;}
-				else if ("body".equals(key))         {curr.body = value;} //!
+				else if ("body".equals(key))         {curr.body = toByteArray(value);} //!
 				else if ("body_size".equals(key))    {curr.body_size = Integer.parseInt(value);}
 				else if (key.startsWith("header"))   {
 					String [] h = getHeader(value); 
@@ -175,7 +175,7 @@ public class TestLoader {
 		String request_url;
 		String fragment ;
 		String query_string;
-		String body;
+		byte [] body;
 		int body_size;
 		Map<String,String> header;
 		boolean should_keep_alive;
@@ -187,6 +187,7 @@ public class TestLoader {
 		Map<String,String> parsed_header;
 		String currHField;
 		String currHValue;
+		byte [] pbody;
 
 		Test () {
 			this.header        = new HashMap<String, String>();
@@ -275,13 +276,63 @@ public class TestLoader {
 					if (header.keySet().size() != parsed_header.keySet().size()) {
 						throw new RuntimeException("different amount of headers");
 					}
+					for (String key : header.keySet()) {
+						String pvalue = parsed_header.get(key);
+						if (!header.get(key).equals(pvalue)) {
+							throw new RuntimeException("different values for :"+key);
+						}
+					}
 
 					return 0;
 				}
 			};
-			s.on_message_complete = new HTTPCallback() {
+			s.on_headers_complete = new HTTPCallback() {
 				public int cb (HTTPParser p) {
 					p("Complete:"+name);
+					return 0;
+				}
+			};
+
+			s.on_body = new HTTPDataCallback() {
+				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
+					
+					
+					
+					int l   = pbody == null ? len : len + pbody.length;
+					int off = pbody == null ?   0 : pbody.length;
+					
+					byte [] nbody = new byte[l];
+
+					if (null != pbody) {
+						System.arraycopy(pbody, 0, nbody, 0, pbody.length);
+					}
+
+					int saved = b.position();
+					b.position(pos);
+					b.get(nbody, off, len);
+					b.position(saved);
+					pbody = nbody;
+				  return 0;
+				}
+			};
+
+			s.on_message_complete = new HTTPCallback() {
+				public int cb(HTTPParser p) {
+					p(pbody);
+					p(body.length);
+					if (null == pbody && (null == body || body.length == 0 || body.length == 1)) {
+						return 0;
+					}
+					if (pbody.length != body.length) {
+						p(pbody.length);
+						p(body.length);
+						throw new RuntimeException("incorrect body length");
+					}
+					for (int i = 0 ; i!= body.length; ++i) {
+						if (pbody[i] != body[i]) {
+							throw new RuntimeException("different body");
+						}
+					}
 					return 0;
 				}
 			};
