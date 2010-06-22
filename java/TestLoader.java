@@ -270,6 +270,12 @@ public class TestLoader {
 						currHField = null;
 						currHValue = null;
 					}
+					
+					// check header
+					if (header.keySet().size() != parsed_header.keySet().size()) {
+						throw new RuntimeException("different amount of headers");
+					}
+
 					return 0;
 				}
 			};
