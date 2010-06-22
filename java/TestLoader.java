@@ -275,12 +275,12 @@ public class TestLoader {
 			};
 			s.on_message_complete = new HTTPCallback() {
 				public int cb (HTTPParser p) {
-					p(name);
+					p("Complete:"+name);
 					return 0;
 				}
 			};
 
-
+	p(name);
 			p.execute(s, buf, -1);
 		}
 	}

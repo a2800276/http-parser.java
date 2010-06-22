@@ -2328,14 +2328,14 @@ while (data.position() != data.limit()) {
 	boolean http_should_keep_alive() {
 		if (http_major > 0 && http_minor > 0) {
 			/* HTTP/1.1 */
-			if ( 1 == (flags & F_CONNECTION_CLOSE) ) {
+			if ( 0 != (flags & F_CONNECTION_CLOSE) ) {
 				return false;
 			} else {
 				return true;
 			}
 		} else {
 			/* HTTP/1.0 or earlier */
-			if ( 1 == (flags & F_CONNECTION_KEEP_ALIVE) ) {
+			if ( 0 != (flags & F_CONNECTION_KEEP_ALIVE) ) {
 				return true;
 			} else {
 				return false;
@@ -2440,7 +2440,6 @@ while (data.position() != data.limit()) {
 					throw new RuntimeException("incorrect header ending, expection LF");
 				}
         state = State.header_field_start;
-
         switch (header_state) {
           case connection_keep_alive:
             flags |= F_CONNECTION_KEEP_ALIVE;
@@ -2517,6 +2516,11 @@ while (data.position() != data.limit()) {
           } else {
             if (type == ParserType.HTTP_REQUEST || http_should_keep_alive()) {
               /* Assume content-length 0 - read the next */
+try {
+throw new RuntimeException();
+}catch (Throwable t) {
+	t.printStackTrace();
+}
 							settings.call_on_message_complete(this);
               state = new_message(); 
             } else {
