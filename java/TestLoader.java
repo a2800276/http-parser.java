@@ -62,11 +62,15 @@ public class TestLoader {
 				else if ("status_code".equals(key))  {curr.status_code = Integer.parseInt(value);}
 				else if ("request_path".equals(key)) {curr.request_path = value;}
 				else if ("request_url".equals(key))  {curr.request_url = value;}
+			
 				else if ("fragment".equals(key))     {curr.fragment = value;}
 				else if ("query_string".equals(key)) {curr.query_string = value;}
 				else if ("body".equals(key))         {curr.body = value;} //!
 				else if ("body_size".equals(key))    {curr.body_size = Integer.parseInt(value);}
-				else if ("header".equals(key))       {curr.header = null;} //!
+				else if (key.startsWith("header"))   {
+					String [] h = getHeader(value); 
+					curr.header.put(h[0], h[1]);
+				} 
 				else if ("should_keep_alive".equals(key)) 
 				                                     {curr.should_keep_alive = (1 == Integer.parseInt(value));}
 				else if ("upgrade".equals(key))      {curr.upgrade           = (1 == Integer.parseInt(value));}
@@ -78,6 +82,21 @@ public class TestLoader {
 
 		}
 		return list;
+	}
+
+	String [] getHeader(String value) {
+		// { "Host": "0.0.0.0=5000"}
+		Pattern p = Pattern.compile("\\{ ?\"([^\"]*)\": ?\"([^\"]*)\"}");
+		Matcher m = p.matcher(value);
+		if (!m.matches()) {
+			p(value);
+			throw new RuntimeException("something wrong");
+		}
+		String [] result = new String[2];
+		MatchResult r = m.toMatchResult();
+		result[0] = r.group(1).trim();
+		result[1] = r.group(2).trim();
+		return result;
 	}
 	
 	static final byte BSLASH = 0x5c;
@@ -119,6 +138,7 @@ public class TestLoader {
 				case QUOT:
 					escaped = false;
 					bytes.add(QUOT);
+					break;
 				default:
 					bytes.add(b);
 			}
@@ -157,39 +177,105 @@ public class TestLoader {
 		String query_string;
 		String body;
 		int body_size;
-		String [][] header;
+		Map<String,String> header;
 		boolean should_keep_alive;
 		boolean upgrade;
 		int http_major;
 		int http_minor;
 
-		void execute () {
-			ByteBuffer   buf = ByteBuffer.wrap(raw);
-			HTTPParser     p = new HTTPParser();
-			ParserSettings s = new ParserSettings();
 
-										 s.on_url = new HTTPDataCallback() {
-			public int cb (HTTPParser p, ByteBuffer b, int pos, int len) {
-				p(p);
-				p(b);
-				p(pos);
-				p(len);
+		Map<String,String> parsed_header;
+		String currHField;
+		String currHValue;
 
+		Test () {
+			this.header        = new HashMap<String, String>();
+			this.parsed_header = new HashMap<String, String>();
+		}
+		void check (boolean val, String mes) {
+			if (!val) {
+				p(name+" : "+mes);
+			}
+		}
+
+		String str (ByteBuffer b, int pos, int len) {
 				byte [] by = new byte[len];
 				int saved = b.position();
 				b.position(pos);
 				b.get(by);
 				b.position(saved);
-
-				System.out.println(new String(by));
-
-				if (-1 == pos) {
-					throw new RuntimeException("he?");
+				return new String(by);
+		}
+		
+		HTTPDataCallback getCB (final String value, final String mes) {
+			return new HTTPDataCallback() {
+				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
+					String str = str(b, pos, len);
+					check(value.equals(str), "incorrect "+mes+": "+str);
+					if (-1 == pos) {
+						throw new RuntimeException("he?");
+					}
+					return 0;
 				}
-				return 0;
-			}
+			};
+		}
 			
-										 };
+		void execute () {
+			ByteBuffer   buf = ByteBuffer.wrap(raw);
+			HTTPParser     p = new HTTPParser();
+			ParserSettings s = new ParserSettings();
+
+			s.on_path         = getCB(request_path, "path");
+			s.on_query_string = getCB(query_string, "query_string");
+			s.on_url          = getCB(request_url,  "url");
+			s.on_fragment     = getCB(fragment,     "fragment");
+			s.on_header_field = new HTTPDataCallback() {
+				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
+					if (null != currHValue || null != currHField) {
+						if (null == currHField || null == currHValue) {
+							throw new RuntimeException("shouldn't happen");
+						}
+					}
+	p(name);
+	p(str(b,pos,len));
+	p(name);
+					if (null != currHField) {
+						parsed_header.put(currHField, currHValue);
+						currHField = null;
+						currHValue = null;
+					}
+					currHField = str(b,pos,len);
+					return 0;
+				}
+			};
+			s.on_header_value = new HTTPDataCallback() {
+				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
+					if (null == currHField) {
+		p(">");
+		p(str(b,pos,len));
+		p("<");
+						throw new RuntimeException(name+" :shouldn't happen field");
+					}
+					currHValue = str(b,pos,len);
+					return 0;
+				}
+			};
+			s.on_headers_complete = new HTTPCallback() {
+				public int cb (HTTPParser p) {
+					if (null != currHValue || null != currHField) {
+						if (null == currHField || null == currHValue) {
+							throw new RuntimeException("shouldn't happen");
+						}
+					}
+					if (null != currHField) {
+						parsed_header.put(currHField, currHValue);
+						currHField = null;
+						currHValue = null;
+					}
+					return 0;
+				}
+			};
+
 
 			p.execute(s, buf, -1);
 		}

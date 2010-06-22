@@ -1941,8 +1941,9 @@ while (data.position() != data.limit()) {
 //
       case header_value:
       {
+				
 				c = UPCASE[ch];
-        if (c != 0) {
+        if (c == 0) {
           if (CR == ch) {
 						settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
 						header_value_mark = -1;
@@ -2292,6 +2293,7 @@ while (data.position() != data.limit()) {
 	} // switch
 } // while
 //
+	System.out.println(state);
 //  CALLBACK_NOCLEAR(header_field);
 	settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
 //  CALLBACK_NOCLEAR(header_value);
