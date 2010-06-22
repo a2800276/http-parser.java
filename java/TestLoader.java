@@ -221,6 +221,7 @@ public class TestLoader {
 		}
 			
 		void execute () {
+			p(name);
 			ByteBuffer   buf = ByteBuffer.wrap(raw);
 			HTTPParser     p = new HTTPParser();
 			ParserSettings s = new ParserSettings();
@@ -236,9 +237,9 @@ public class TestLoader {
 							throw new RuntimeException("shouldn't happen");
 						}
 					}
-	p(name);
-	p(str(b,pos,len));
-	p(name);
+//	p(name);
+//	p(str(b,pos,len));
+//	p(name);
 					if (null != currHField) {
 						parsed_header.put(currHField, currHValue);
 						currHField = null;
@@ -251,9 +252,6 @@ public class TestLoader {
 			s.on_header_value = new HTTPDataCallback() {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
 					if (null == currHField) {
-		p(">");
-		p(str(b,pos,len));
-		p("<");
 						throw new RuntimeException(name+" :shouldn't happen field");
 					}
 					currHValue = str(b,pos,len);
@@ -272,6 +270,12 @@ public class TestLoader {
 						currHField = null;
 						currHValue = null;
 					}
+					return 0;
+				}
+			};
+			s.on_message_complete = new HTTPCallback() {
+				public int cb (HTTPParser p) {
+					p(name);
 					return 0;
 				}
 			};

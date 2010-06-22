@@ -1800,7 +1800,7 @@ while (data.position() != data.limit()) {
 
 				c = UPCASE[ch];
 
-        if (c != 0) {
+        if (c == 0) {
           if (CR == ch) {
 						settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
 						header_value_mark = -1;
@@ -2072,7 +2072,7 @@ while (data.position() != data.limit()) {
           // if (settings->on_body) settings->on_body(parser, p, to_read); 
 					settings.call_on_body(this, data, p, to_read); 
           //p += to_read - 1;
-					data.position(p+to_read-1);
+					data.position(p+to_read);
           content_length -= to_read;
           if (content_length == 0) {
            // CALLBACK2(message_complete);
@@ -2096,7 +2096,7 @@ while (data.position() != data.limit()) {
           // if (settings->on_body) settings->on_body(parser, p, to_read);
 					settings.call_on_body(this, data, p, to_read); 
           //p += to_read - 1; 
-					data.position(p+to_read -1);
+					data.position(p+to_read);
         }
         break;
 
@@ -2240,7 +2240,7 @@ while (data.position() != data.limit()) {
           // if (settings->on_body) settings->on_body(parser, p, to_read); 
 					settings.call_on_body(this, data, p, to_read);
           // p += to_read - 1; 
-					data.position(p+to_read-1);
+					data.position(p+to_read);
         }
 
         if (to_read == content_length) {
@@ -2293,7 +2293,6 @@ while (data.position() != data.limit()) {
 	} // switch
 } // while
 //
-	System.out.println(state);
 //  CALLBACK_NOCLEAR(header_field);
 	settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
 //  CALLBACK_NOCLEAR(header_value);
@@ -2440,7 +2439,6 @@ while (data.position() != data.limit()) {
 				if (LF != ch) {
 					throw new RuntimeException("incorrect header ending, expection LF");
 				}
-
         state = State.header_field_start;
 
         switch (header_state) {
@@ -2466,6 +2464,7 @@ while (data.position() != data.limit()) {
           /* End of a chunked request */
           // CALLBACK2(message_complete);
 					settings.call_on_message_complete(this);
+
           state = new_message(); 
           //break;
 					return;
@@ -2603,13 +2602,13 @@ while (data.position() != data.limit()) {
     	0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 
 		};
 		static final byte [] PROXY_CONNECTION = {
-    	0x50, 0x52, 0x4f, 0x58, 0x59, 0x5f, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 
+    	0x50, 0x52, 0x4f, 0x58, 0x59, 0x2d, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 
 		};
 		static final byte [] CONTENT_LENGTH = {
-    	0x43, 0x4f, 0x4e, 0x54, 0x45, 0x4e, 0x54, 0x5f, 0x4c, 0x45, 0x4e, 0x47, 0x54, 0x48, 
+    	0x43, 0x4f, 0x4e, 0x54, 0x45, 0x4e, 0x54, 0x2d, 0x4c, 0x45, 0x4e, 0x47, 0x54, 0x48, 
 		};
 		static final byte [] TRANSFER_ENCODING = {
-    	0x54, 0x52, 0x41, 0x4e, 0x53, 0x46, 0x45, 0x52, 0x5f, 0x45, 0x4e, 0x43, 0x4f, 0x44, 0x49, 0x4e, 0x47, 
+    	0x54, 0x52, 0x41, 0x4e, 0x53, 0x46, 0x45, 0x52, 0x2d, 0x45, 0x4e, 0x43, 0x4f, 0x44, 0x49, 0x4e, 0x47, 
 		};
 		static final byte [] UPGRADE = {
 			0x55, 0x50, 0x47, 0x52, 0x41, 0x44, 0x45, 
@@ -2618,7 +2617,7 @@ while (data.position() != data.limit()) {
 			0x43, 0x48, 0x55, 0x4e, 0x4b, 0x45, 0x44, 
 		};
 		static final byte [] KEEP_ALIVE = {
-			0x4b, 0x45, 0x45, 0x50, 0x5f, 0x41, 0x4c, 0x49, 0x56, 0x45, 
+			0x4b, 0x45, 0x45, 0x50, 0x2d, 0x41, 0x4c, 0x49, 0x56, 0x45, 
 		};
 		static final byte [] CLOSE = {
 			0x43, 0x4c, 0x4f, 0x53, 0x45, 
