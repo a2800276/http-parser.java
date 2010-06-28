@@ -34,6 +34,8 @@ public class  HTTPParser {
 
   /** PUBLIC **/
 	// TODO : perhaps generic?
+	// is this even necessary? we have state in java ?
+	// consider 
   Object data; /* A pointer to get hook to the "connection" or "socket" object */
 			
 
@@ -64,12 +66,15 @@ int url_mark = -1;
 				throw new RuntimeException("can't happen, invalid ParserType enum");
 		}
 	}
+	
+	static void p(Object o) {System.out.println(o);}
 
 	// size_t http_parser_execute(http_parser *parser,
   //                            const http_parser_settings *settings,
   //                            const char *data,
   //                            size_t len);
 	public int execute(ParserSettings settings, ByteBuffer data, int len) {
+	//	p(">"+state);
 //		//TODO
 //  char c, ch;
 //  const char *p = data, *pe;
@@ -88,7 +93,7 @@ int url_mark = -1;
 //!    }
 //!    return 0;
 //!  }
-		if (0 == len) {
+		if (0 == len) { //TODO
 			if (State.body_identity_eof == state) {
 				settings.call_on_message_complete(this);
 			}
@@ -104,7 +109,6 @@ int url_mark = -1;
 //?  const char *path_mark = 0;
 //?  const char *url_mark = 0;
 		
-		// TODO: does mark() translate well?
 
 switch (state) {
 //  if (state == s_header_field)
@@ -150,11 +154,12 @@ case req_fragment_start:
 	break;
 }
 //  for (p=data, pe=data+len; p != pe; p++) {
-// TODO, figure out how this best translates to ByteBuffer
 //for (;;) {
 while (data.position() != data.limit()) {
 	      p = data.position();
 	int  pe = data.limit();
+//	p("p.pos:"+p);
+//	p("p.state:"+state);
 	byte ch = data.get();
 	byte c = -1;
 	int to_read =0;
@@ -2316,6 +2321,7 @@ while (data.position() != data.limit()) {
 //error:
 //  return (p - data);
 //		return n;
+//		p("<"+state);
 	return len;
 	
 }
@@ -2478,7 +2484,8 @@ while (data.position() != data.limit()) {
          * is needed for the annoying case of recieving a response to a HEAD
          * request.
          */
-        if (null != settings.on_headers_complete) {
+				settings.call_on_message_complete(this);
+//        if (null != settings.on_headers_complete) {
 //          switch (settings.on_headers_complete.cb(parser)) {
 //            case 0:
 //              break;
@@ -2490,7 +2497,7 @@ while (data.position() != data.limit()) {
 //            default:
 //              return p - data; /* Error */ // TODO // RuntimeException ?
 //          }
-        }
+//        }
         // Exit, the rest of the connect is in a different protocol.
         if (0 != (flags & F_UPGRADE)) {
           // CALLBACK2(message_complete);
@@ -2532,6 +2539,7 @@ while (data.position() != data.limit()) {
 
 	public boolean HTTP_PARSER_STRICT = true;
 	State new_message() {
+		//try {throw new Exception();}catch (Throwable t) {t.printStackTrace();}
 		if (HTTP_PARSER_STRICT){
 			return http_should_keep_alive() ? start_state() : State.dead;
 		} else {

@@ -160,7 +160,9 @@ public class TestLoader {
 		List<Test> ts = l.load();
 
 		for (Test t : ts) {
-			t.execute();
+			t.execute_permutations();
+		//	t.execute();
+		//	System.exit(0);
 		}
 	}
 
@@ -195,7 +197,8 @@ public class TestLoader {
 		}
 		void check (boolean val, String mes) {
 			if (!val) {
-				p(name+" : "+mes);
+				//p(name+" : "+mes);
+				throw new RuntimeException(name+" : "+mes);
 			}
 		}
 
@@ -208,11 +211,13 @@ public class TestLoader {
 				return new String(by);
 		}
 		
-		HTTPDataCallback getCB (final String value, final String mes) {
+		HTTPDataCallback getCB (final String value, final String mes, final TestSettings settings) {
 			return new HTTPDataCallback() {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
-					String str = str(b, pos, len);
-					check(value.equals(str), "incorrect "+mes+": "+str);
+					String str      = str(b, pos, len);
+					String prev_val = settings.map.get(mes);
+					settings.map.put(mes, prev_val + str);
+					//check(value.equals(str), "incorrect "+mes+": "+str);
 					if (-1 == pos) {
 						throw new RuntimeException("he?");
 					}
@@ -225,22 +230,63 @@ public class TestLoader {
 			p(name);
 			ByteBuffer   buf = ByteBuffer.wrap(raw);
 			HTTPParser     p = new HTTPParser();
-			ParserSettings s = new ParserSettings();
+			TestSettings s = settings();
 
-			s.on_path         = getCB(request_path, "path");
-			s.on_query_string = getCB(query_string, "query_string");
-			s.on_url          = getCB(request_url,  "url");
-			s.on_fragment     = getCB(fragment,     "fragment");
+			
+
+			p.execute(s, buf, -1);
+			if (!s.success) {
+				throw new RuntimeException("Test: "+name+"failed");
+			}
+		} // execute
+
+		void execute_permutations() {
+			/*
+			|-|---------------|	
+			|--|--------------|	
+			|---|-------------|	
+			(...)
+			|---------------|-|	
+			|-----------------|	
+			*/
+			p(name);
+			for (int i = raw.length-1; i != raw.length; ++i) {
+				HTTPParser   p = new HTTPParser();
+				TestSettings s = settings();
+				ByteBuffer buf = ByteBuffer.wrap(raw);
+
+				int olimit = buf.limit();
+				buf.limit(i);
+				
+				parse(p,s,buf);
+
+				buf.position(i);
+				buf.limit(olimit);
+
+				parse(p,s,buf);
+
+				if (!s.success) {
+					throw new RuntimeException("Test: "+name+"failed");
+				}
+			}
+			//System.exit(0);
+		} // execute_permutations
+		void parse(HTTPParser p, ParserSettings s, ByteBuffer b) {
+			p("About to parse: "+b.position() + "->" + b.limit());
+			p.execute(s, b, -1);
+		}
+
+		TestSettings settings() {
+			final TestSettings s = new TestSettings(); 
+			s.on_path         = getCB(request_path, "path", s);
+			s.on_query_string = getCB(query_string, "query_string", s);
+			s.on_url          = getCB(request_url,  "url", s);
+			s.on_fragment     = getCB(fragment,     "fragment", s);
 			s.on_header_field = new HTTPDataCallback() {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
-					if (null != currHValue || null != currHField) {
-						if (null == currHField || null == currHValue) {
-							throw new RuntimeException("shouldn't happen");
-						}
+					if (null != currHValue && null == currHField) {
+							throw new RuntimeException(name+": shouldn't happen");
 					}
-//	p(name);
-//	p(str(b,pos,len));
-//	p(name);
 					if (null != currHField) {
 						parsed_header.put(currHField, currHValue);
 						currHField = null;
@@ -261,6 +307,25 @@ public class TestLoader {
 			};
 			s.on_headers_complete = new HTTPCallback() {
 				public int cb (HTTPParser p) {
+					
+					String parsed_path  = s.map.get("path");
+					String parsed_query = s.map.get("query_string");
+					String parsed_url   = s.map.get("url");
+					String parsed_frag  = s.map.get("fragment");
+					
+					if (!request_path.equals(parsed_path)) {
+						throw new RuntimeException(name+": invalid path:"+parsed_path+"should be:"+request_path);
+					}
+					if (!query_string.equals(parsed_query)) {
+						throw new RuntimeException(name+": invalid query:"+parsed_query+"should be:"+query_string);
+					}
+					if (!request_url.equals(parsed_url)) {
+						throw new RuntimeException(name+": invalid url:"+parsed_url+"should be:"+request_url);
+					}
+					if (!fragment.equals(parsed_frag)) {
+						throw new RuntimeException(name+": invalid fragement:"+parsed_frag+"should be:"+fragment);
+					}
+
 					if (null != currHValue || null != currHField) {
 						if (null == currHField || null == currHValue) {
 							throw new RuntimeException("shouldn't happen");
@@ -297,7 +362,6 @@ public class TestLoader {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
 					
 					
-					
 					int l   = pbody == null ? len : len + pbody.length;
 					int off = pbody == null ?   0 : pbody.length;
 					
@@ -318,10 +382,18 @@ public class TestLoader {
 
 			s.on_message_complete = new HTTPCallback() {
 				public int cb(HTTPParser p) {
-					p(pbody);
-					p(body.length);
+					if (   p.http_minor  != http_minor
+							|| p.http_major  != http_major
+							|| p.status_code != status_code ) {
+					
+							throw new RuntimeException("major/minor/status_code mismatch");
+					}
 					if (null == pbody && (null == body || body.length == 0 || body.length == 1)) {
+						s.success = true;
 						return 0;
+					}
+					if (null == pbody) {
+						throw new RuntimeException(name+": no body, should be: "+new String(body));
 					}
 					if (pbody.length != body.length) {
 						p(pbody.length);
@@ -333,12 +405,22 @@ public class TestLoader {
 							throw new RuntimeException("different body");
 						}
 					}
+					s.success = true;
 					return 0;
 				}
 			};
-
-	p(name);
-			p.execute(s, buf, -1);
+			return s;
+		} // settings
+	}
+	class TestSettings extends ParserSettings {
+		public boolean success;
+		Map<String, String> map;
+		TestSettings () {
+			map = new HashMap();
+			map.put("path", "");
+			map.put("query_string", "");
+			map.put("url", "");
+			map.put("fragment", "");
 		}
 	}
 }
