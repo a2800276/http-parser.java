@@ -351,12 +351,12 @@ public class TestLoader {
 					return 0;
 				}
 			};
-			s.on_headers_complete = new HTTPCallback() {
-				public int cb (HTTPParser p) {
-					p("Complete:"+name);
-					return 0;
-				}
-			};
+		//	s.on_headers_complete = new HTTPCallback() {
+		//		public int cb (HTTPParser p) {
+		//			p("Complete:"+name);
+		//			return 0;
+		//		}
+		//	};
 
 			s.on_body = new HTTPDataCallback() {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
