@@ -74,12 +74,13 @@ int url_mark = -1;
   //                            const char *data,
   //                            size_t len);
 	public int execute(ParserSettings settings, ByteBuffer data, int len) {
-	//	p(">"+state);
+		p(">"+state);
 //		//TODO
 //  char c, ch;
 //  const char *p = data, *pe;
 //  ssize_t to_read;
 	int p = data.position();
+      len = (data.limit() - data.position());
 
 //
 //!  enum state state = (enum state) parser->state;
@@ -156,6 +157,7 @@ case req_fragment_start:
 //  for (p=data, pe=data+len; p != pe; p++) {
 //for (;;) {
 while (data.position() != data.limit()) {
+  //p(state);
 	      p = data.position();
 	int  pe = data.limit();
 //	p("p.pos:"+p);
@@ -368,7 +370,7 @@ while (data.position() != data.limit()) {
 			throw new RuntimeException("not a digit");			
 		}
 		http_major *= 10;
-		http_major += (int)(ch - 0x30);
+		http_major += (ch - 0x30);
 
 		if (http_major > 999) {
 			throw new RuntimeException("invalid http major version: "+http_major);
@@ -412,7 +414,7 @@ while (data.position() != data.limit()) {
 			throw new RuntimeException("not a digit");			
 		}
 		http_minor *= 10;
-		http_minor += (int)(ch - 0x30);
+		http_minor += (ch - 0x30);
 
 		if (http_minor > 999) {
 			throw new RuntimeException("invalid http minor version: "+http_major);
@@ -937,6 +939,7 @@ while (data.position() != data.limit()) {
 				settings.call_on_url(this, data, url_mark, p-url_mark);
 				url_mark = -1;
 				state = State.req_http_start;
+        break;
 			case CR:
 				settings.call_on_url(this,data,url_mark, p-url_mark);
 				url_mark = -1; 
@@ -1082,6 +1085,7 @@ while (data.position() != data.limit()) {
 					settings.call_on_url(this, data, url_mark, p-url_mark);
 					url_mark = -1;
 					state = State.req_http_start;
+          break;
 				case CR:
 					settings.call_on_url(this,data,url_mark, p-url_mark);
 					url_mark = -1; 
@@ -1305,7 +1309,7 @@ while (data.position() != data.limit()) {
 				if (!isDigit(ch)) {
 					throw new RuntimeException("non digit in http minor");
 				}
-        http_minor = (int)(ch - 0x30);
+        http_minor = (ch - 0x30);
         state = State.req_http_minor;
         break;
 //
@@ -2461,6 +2465,7 @@ while (data.position() != data.limit()) {
         }
       }
       void headers_almost_done (byte ch, ParserSettings settings) {
+
 				if (LF != ch) {
 					throw new RuntimeException("header not properly completed");
 				}
@@ -2468,6 +2473,7 @@ while (data.position() != data.limit()) {
         if (0 != (flags & F_TRAILING)) {
           /* End of a chunked request */
           // CALLBACK2(message_complete);
+          settings.call_on_headers_complete(this);
 					settings.call_on_message_complete(this);
 
           state = new_message(); 
@@ -2484,7 +2490,11 @@ while (data.position() != data.limit()) {
          * is needed for the annoying case of recieving a response to a HEAD
          * request.
          */
-				settings.call_on_message_complete(this);
+
+				if (null != settings.on_headers_complete) {
+					settings.call_on_headers_complete(this);
+					//return;
+				}
 //        if (null != settings.on_headers_complete) {
 //          switch (settings.on_headers_complete.cb(parser)) {
 //            case 0:

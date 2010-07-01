@@ -42,6 +42,9 @@ public class ParserSettings {
 	void call_on_body(HTTPParser p, ByteBuffer buf, int pos, int len) {
 		call_on(on_body, p, buf, pos, len);
 	}
+	void call_on_headers_complete(HTTPParser p) {
+		call_on(on_headers_complete, p);
+	} 
 	void call_on (HTTPCallback cb, HTTPParser p) {
 		// cf. CALLBACK2 macro
 		if (null != cb) {

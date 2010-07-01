@@ -185,11 +185,33 @@ public class TestLoader {
 		int http_major;
 		int http_minor;
 
+    boolean message_begin_called;
+    boolean message_complete_called;
+    boolean headers_complete_called;
+
 
 		Map<String,String> parsed_header;
 		String currHField;
 		String currHValue;
 		byte [] pbody;
+    
+    public String toString() {
+      StringBuilder b = new StringBuilder();
+      b.append("type: "); b.append(type);b.append("\n");
+      b.append("method: "); b.append(method);b.append("\n");
+      b.append("status_code: "); b.append(status_code);b.append("\n");
+      b.append("request_path: "); b.append(request_path);b.append("\n");
+      b.append("request_url: "); b.append(request_url);b.append("\n");
+      b.append("fragment: "); b.append(fragment);b.append("\n");
+      b.append("query_string: "); b.append(query_string);b.append("\n");
+      b.append("body:\n"); b.append(new String(body));b.append("\n");
+      b.append("should_keep_alive: "); b.append(should_keep_alive);b.append("\n");
+      b.append("upgrade: "); b.append(upgrade);b.append("\n");
+      b.append("http_major: "); b.append(http_major);b.append("\n");
+      b.append("http_minor: "); b.append(http_minor);b.append("\n");
+      b.append("message_complete_called: "); b.append(message_complete_called);b.append("\n");
+      return b.toString();
+    }
 
 		Test () {
 			this.header        = new HashMap<String, String>();
@@ -264,15 +286,17 @@ public class TestLoader {
 				buf.limit(olimit);
 
 				parse(p,s,buf);
+				parse(p,s,buf);
 
 				if (!s.success) {
-					throw new RuntimeException("Test: "+name+"failed");
+          p(this);
+					throw new RuntimeException("Test: "+name+" failed");
 				}
 			}
 			//System.exit(0);
 		} // execute_permutations
 		void parse(HTTPParser p, ParserSettings s, ByteBuffer b) {
-			p("About to parse: "+b.position() + "->" + b.limit());
+			//p("About to parse: "+b.position() + "->" + b.limit());
 			p.execute(s, b, -1);
 		}
 
@@ -282,6 +306,12 @@ public class TestLoader {
 			s.on_query_string = getCB(query_string, "query_string", s);
 			s.on_url          = getCB(request_url,  "url", s);
 			s.on_fragment     = getCB(fragment,     "fragment", s);
+      s.on_message_begin = new HTTPCallback() {
+        public int cb (HTTPParser p) {
+          message_begin_called = true;
+          return -1;
+        }
+      };
 			s.on_header_field = new HTTPDataCallback() {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
 					if (null != currHValue && null == currHField) {
@@ -307,7 +337,7 @@ public class TestLoader {
 			};
 			s.on_headers_complete = new HTTPCallback() {
 				public int cb (HTTPParser p) {
-					
+					headers_complete_called = true;
 					String parsed_path  = s.map.get("path");
 					String parsed_query = s.map.get("query_string");
 					String parsed_url   = s.map.get("url");
@@ -325,7 +355,6 @@ public class TestLoader {
 					if (!fragment.equals(parsed_frag)) {
 						throw new RuntimeException(name+": invalid fragement:"+parsed_frag+"should be:"+fragment);
 					}
-
 					if (null != currHValue || null != currHField) {
 						if (null == currHField || null == currHValue) {
 							throw new RuntimeException("shouldn't happen");
@@ -337,16 +366,6 @@ public class TestLoader {
 						currHValue = null;
 					}
 					
-					// check header
-					if (header.keySet().size() != parsed_header.keySet().size()) {
-						throw new RuntimeException("different amount of headers");
-					}
-					for (String key : header.keySet()) {
-						String pvalue = parsed_header.get(key);
-						if (!header.get(key).equals(pvalue)) {
-							throw new RuntimeException("different values for :"+key);
-						}
-					}
 
 					return 0;
 				}
@@ -382,12 +401,27 @@ public class TestLoader {
 
 			s.on_message_complete = new HTTPCallback() {
 				public int cb(HTTPParser p) {
+          message_complete_called = true;
 					if (   p.http_minor  != http_minor
 							|| p.http_major  != http_major
 							|| p.status_code != status_code ) {
 					
 							throw new RuntimeException("major/minor/status_code mismatch");
 					}
+
+          //check headers
+
+					if (header.keySet().size() != parsed_header.keySet().size()) {
+            p(parsed_header);
+						throw new RuntimeException(name+": different amount of headers");
+					}
+					for (String key : header.keySet()) {
+						String pvalue = parsed_header.get(key);
+						if (!header.get(key).equals(pvalue)) {
+							throw new RuntimeException("different values for :"+key);
+						}
+					}
+          //check body
 					if (null == pbody && (null == body || body.length == 0 || body.length == 1)) {
 						s.success = true;
 						return 0;
@@ -398,7 +432,9 @@ public class TestLoader {
 					if (pbody.length != body.length) {
 						p(pbody.length);
 						p(body.length);
-						throw new RuntimeException("incorrect body length");
+            p(new String(pbody));
+            p(new String(body));
+						throw new RuntimeException(name+": incorrect body length");
 					}
 					for (int i = 0 ; i!= body.length; ++i) {
 						if (pbody[i] != body[i]) {
@@ -416,7 +452,7 @@ public class TestLoader {
 		public boolean success;
 		Map<String, String> map;
 		TestSettings () {
-			map = new HashMap();
+			map = new HashMap<String, String>();
 			map.put("path", "");
 			map.put("query_string", "");
 			map.put("url", "");
