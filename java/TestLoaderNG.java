@@ -244,6 +244,13 @@ public class TestLoaderNG {
 		HTTPDataCallback getCB (final String value, final String mes, final TestSettings settings) {
 			return new HTTPDataCallback() {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
+//   if ("url".equals(mes)){
+//    p("pos"+pos);
+//    p("len"+len);
+//    if (8==pos && 5 == len && "connect request".equals(name)) {
+//      //throw new RuntimeException(name);
+//    }
+//   }
 					String str      = str(b, pos, len);
 					String prev_val = settings.map.get(mes);
 					settings.map.put(mes, prev_val + str);
@@ -281,7 +288,7 @@ public class TestLoaderNG {
 			*/
 			p(name);
 			for (int i = 2; i != raw.length; ++i) {
-   p(i);
+ //  p(i);
 				HTTPParser   p = new HTTPParser();
 				TestSettings s = settings();
 				ByteBuffer buf = ByteBuffer.wrap(raw);
@@ -368,7 +375,7 @@ public class TestLoaderNG {
 						throw new RuntimeException(name+": invalid query: "+parsed_query+" should be: "+query_string);
 					}
 					if (!request_url.equals(parsed_url)) {
-						throw new RuntimeException(name+": invalid url: "+parsed_url+" should be: "+request_url);
+						throw new RuntimeException(">"+name+"<: invalid url: >"+parsed_url+"< should be: >"+request_url+"<");
 					}
 					if (!fragment.equals(parsed_frag)) {
 						throw new RuntimeException(name+": invalid fragement: "+parsed_frag+" should be: "+fragment);
@@ -397,15 +404,8 @@ public class TestLoaderNG {
 
 			s.on_body = new HTTPDataCallback() {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
-          if (pbody != null) {
-				p(new String(pbody));	
-          }
 					int l   = pbody == null ? len : len + pbody.length;
 					int off = pbody == null ?   0 : pbody.length;
-				p("here:"+l);	
-        if(10 == l) {
-          throw new RuntimeException();
-        }
 					byte [] nbody = new byte[l];
 
 					if (null != pbody) {
