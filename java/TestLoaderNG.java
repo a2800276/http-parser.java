@@ -225,7 +225,6 @@ public class TestLoaderNG {
 		}
 
 		String str (ByteBuffer b, int pos, int len) {
-      p("str p"+pos+" len "+len);
 				byte [] by = new byte[len];
 				int saved = b.position();
 				b.position(pos);
@@ -239,10 +238,6 @@ public class TestLoaderNG {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
 					String str      = str(b, pos, len);
 					String prev_val = settings.map.get(mes);
-  p(mes+" str>"+str+"<");
-  if ("test".equals(str)) throw new RuntimeException();
-  p("p"+prev_val);
-  p("");
 					settings.map.put(mes, prev_val + str);
 					//check(value.equals(str), "incorrect "+mes+": "+str);
 					if (-1 == pos) {
@@ -323,11 +318,16 @@ public class TestLoaderNG {
 							throw new RuntimeException(name+": shouldn't happen");
 					}
 					if (null != currHField) {
-						parsed_header.put(currHField, currHValue);
-						currHField = null;
-						currHValue = null;
+            if (null == currHValue) {
+              currHField += str(b,pos,len);
+              return 0;
+            } else {
+              parsed_header.put(currHField, currHValue);
+              currHField = null;
+              currHValue = null;
+            }
 					}
-					currHField = str(b,pos,len);
+          currHField = str(b,pos,len);
 					return 0;
 				}
 			};
@@ -336,7 +336,11 @@ public class TestLoaderNG {
 					if (null == currHField) {
 						throw new RuntimeException(name+" :shouldn't happen field");
 					}
-					currHValue = str(b,pos,len);
+          if (null == currHValue) {
+					  currHValue = str(b,pos,len);
+          } else {
+            currHValue += str(b, pos, len);
+          }
 					return 0;
 				}
 			};
@@ -423,7 +427,7 @@ public class TestLoaderNG {
 					for (String key : header.keySet()) {
 						String pvalue = parsed_header.get(key);
 						if (!header.get(key).equals(pvalue)) {
-							throw new RuntimeException("different values for :"+key);
+							throw new RuntimeException(name+" : different values for :"+key+" is >"+pvalue+"< should: >"+header.get(key)+"<");
 						}
 					}
           //check body

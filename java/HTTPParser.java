@@ -2312,7 +2312,6 @@ p = data.position();
 //  CALLBACK_NOCLEAR(query_string);
 	settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
 //  CALLBACK_NOCLEAR(path);
-      p("here!!!!!!!!!!!!!!!!!!!!");
 	settings.call_on_path(this, data, path_mark, p-path_mark);
 //  CALLBACK_NOCLEAR(url);
 	settings.call_on_url(this, data, url_mark, p-url_mark);
