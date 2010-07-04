@@ -26,9 +26,9 @@ import java.util.regex.*;
 
 import java.nio.ByteBuffer;
 
-public class TestLoader {
+public class TestLoaderNG {
 	String fn;
-	public TestLoader(String filename) {
+	public TestLoaderNG(String filename) {
 		this.fn = filename;
 	}
 	static void p(Object o) {
@@ -156,7 +156,7 @@ public class TestLoader {
 	}
 
 	public static void main(String [] args) throws Throwable {
-		TestLoader  l = new TestLoader(args[0]);
+		TestLoaderNG  l = new TestLoaderNG(args[0]);
 		List<Test> ts = l.load();
 
 		for (Test t : ts) {
@@ -225,6 +225,7 @@ public class TestLoader {
 		}
 
 		String str (ByteBuffer b, int pos, int len) {
+      p("str p"+pos+" len "+len);
 				byte [] by = new byte[len];
 				int saved = b.position();
 				b.position(pos);
@@ -238,6 +239,10 @@ public class TestLoader {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
 					String str      = str(b, pos, len);
 					String prev_val = settings.map.get(mes);
+  p(mes+" str>"+str+"<");
+  if ("test".equals(str)) throw new RuntimeException();
+  p("p"+prev_val);
+  p("");
 					settings.map.put(mes, prev_val + str);
 					//check(value.equals(str), "incorrect "+mes+": "+str);
 					if (-1 == pos) {
@@ -273,6 +278,7 @@ public class TestLoader {
 			*/
 			p(name);
 			for (int i = 2; i != raw.length; ++i) {
+   p(i);
 				HTTPParser   p = new HTTPParser();
 				TestSettings s = settings();
 				ByteBuffer buf = ByteBuffer.wrap(raw);
@@ -343,16 +349,16 @@ public class TestLoader {
 					String parsed_frag  = s.map.get("fragment");
 					
 					if (!request_path.equals(parsed_path)) {
-						throw new RuntimeException(name+": invalid path:"+parsed_path+"should be:"+request_path);
+						throw new RuntimeException(name+": invalid path: "+parsed_path+" should be: "+request_path);
 					}
 					if (!query_string.equals(parsed_query)) {
-						throw new RuntimeException(name+": invalid query:"+parsed_query+"should be:"+query_string);
+						throw new RuntimeException(name+": invalid query: "+parsed_query+" should be: "+query_string);
 					}
 					if (!request_url.equals(parsed_url)) {
-						throw new RuntimeException(name+": invalid url:"+parsed_url+"should be:"+request_url);
+						throw new RuntimeException(name+": invalid url: "+parsed_url+" should be: "+request_url);
 					}
 					if (!fragment.equals(parsed_frag)) {
-						throw new RuntimeException(name+": invalid fragement:"+parsed_frag+"should be:"+fragment);
+						throw new RuntimeException(name+": invalid fragement: "+parsed_frag+" should be: "+fragment);
 					}
 					if (null != currHValue || null != currHField) {
 						if (null == currHField || null == currHValue) {

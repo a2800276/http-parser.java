@@ -74,7 +74,7 @@ int url_mark = -1;
   //                            const char *data,
   //                            size_t len);
 	public int execute(ParserSettings settings, ByteBuffer data, int len) {
-		p(">"+state);
+//		p(">"+state);
 //		//TODO
 //  char c, ch;
 //  const char *p = data, *pe;
@@ -165,7 +165,7 @@ while (data.position() != data.limit()) {
 	byte ch = data.get();
 	byte c = -1;
 	int to_read =0;
-	
+//p(ch);	
 //    ch = *p;
 //
 //    if (PARSING_HEADER(state)) {
@@ -2302,6 +2302,7 @@ while (data.position() != data.limit()) {
 	} // switch
 } // while
 //
+p = data.position();
 //  CALLBACK_NOCLEAR(header_field);
 	settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
 //  CALLBACK_NOCLEAR(header_value);
@@ -2311,6 +2312,7 @@ while (data.position() != data.limit()) {
 //  CALLBACK_NOCLEAR(query_string);
 	settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
 //  CALLBACK_NOCLEAR(path);
+      p("here!!!!!!!!!!!!!!!!!!!!");
 	settings.call_on_path(this, data, path_mark, p-path_mark);
 //  CALLBACK_NOCLEAR(url);
 	settings.call_on_url(this, data, url_mark, p-url_mark);
