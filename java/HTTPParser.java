@@ -2077,8 +2077,13 @@ while (data.position() != data.limit()) {
 //        break;
       case body_identity:
         to_read = min(pe - p, content_length); 
+        p("pe "+pe);
+        p("p "+p);
+p("content_length "+content_length);
+
         if (to_read > 0) {
           // if (settings->on_body) settings->on_body(parser, p, to_read); 
+p("to_+read:"+to_read);
 					settings.call_on_body(this, data, p, to_read); 
           //p += to_read - 1;
 					data.position(p+to_read);

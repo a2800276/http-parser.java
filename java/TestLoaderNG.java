@@ -215,8 +215,16 @@ public class TestLoaderNG {
 
 		Test () {
 			this.header        = new HashMap<String, String>();
-			this.parsed_header = new HashMap<String, String>();
+      reset();
 		}
+    /*
+     *prepare this Test Instance for reuse.
+     * */
+    void reset () {
+			this.parsed_header = new HashMap<String, String>();
+      this.pbody         = null;
+    
+    }
 		void check (boolean val, String mes) {
 			if (!val) {
 				//p(name+" : "+mes);
@@ -292,6 +300,7 @@ public class TestLoaderNG {
           p(this);
 					throw new RuntimeException("Test: "+name+" failed");
 				}
+        reset();
 			}
 			//System.exit(0);
 		} // execute_permutations
@@ -388,11 +397,15 @@ public class TestLoaderNG {
 
 			s.on_body = new HTTPDataCallback() {
 				public int cb (HTTPParser p, ByteBuffer b, int pos, int len){
-					
-					
+          if (pbody != null) {
+				p(new String(pbody));	
+          }
 					int l   = pbody == null ? len : len + pbody.length;
 					int off = pbody == null ?   0 : pbody.length;
-					
+				p("here:"+l);	
+        if(10 == l) {
+          throw new RuntimeException();
+        }
 					byte [] nbody = new byte[l];
 
 					if (null != pbody) {
