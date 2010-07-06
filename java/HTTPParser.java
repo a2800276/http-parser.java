@@ -12,7 +12,7 @@ public class  HTTPParser {
 	State state;
 	HState header_state;
 
-	int index; // TODO
+	int index; 
 	int flags; // TODO
 
 	int nread;
@@ -22,34 +22,47 @@ public class  HTTPParser {
   /** READ-ONLY **/
   int http_major;
   int http_minor;
-  int status_code; /* responses only */
+  int status_code;   /* responses only */
   HTTPMethod method; /* requests only */
 
-  /* 1 = Upgrade header was present and the parser has exited because of that.
-   * 0 = No upgrade header present.
+  /* true  = Upgrade header was present and the parser has exited because of that.
+   * false = No upgrade header present.
    * Should be checked when http_parser_execute() returns in addition to
    * error checking.
    */
-  char upgrade; // TODO boolean?
+  boolean upgrade; // TODO boolean?
 
   /** PUBLIC **/
-	// TODO : perhaps generic?
+	// TODO : this is used in c to maintain application state.
 	// is this even necessary? we have state in java ?
 	// consider 
-  Object data; /* A pointer to get hook to the "connection" or "socket" object */
+  // Object data; /* A pointer to get hook to the "connection" or "socket" object */
 			
 
-int header_field_mark = -1;
-int header_value_mark = -1;
-int fragment_mark = -1;
-int query_string_mark = -1;
-int path_mark = -1;
-int url_mark = -1;
+  /* 
+   * technically we could combine all of these (except for url_mark) into one
+   * variable, saving stack space, but it seems more clear to have them
+   * separated. 
+   */
+  int header_field_mark = -1;
+  int header_value_mark = -1;
+  int fragment_mark = -1;
+  int query_string_mark = -1;
+  int path_mark = -1;
+  int url_mark = -1;
 	
+  /**
+   * Construct a Parser for ParserType.HTTP_BOTH, meaning it
+   * determines whether it's parsing a request or a response.
+   */
 	public HTTPParser() {
 		this(ParserType.HTTP_BOTH);
 	}
-	// void http_parser_init(http_parser *parser, enum http_parser_type type);
+	
+  /**
+   * Construct a Parser and initialise it to parse either 
+   * requests or responses.
+   */
 	public HTTPParser(ParserType type) {
 		this.type  = type;
 		switch(type) {
@@ -67,20 +80,24 @@ int url_mark = -1;
 		}
 	}
 	
+  /*
+   * Utility to facilitate System.out.println style debugging (the war god intended)
+   */
 	static void p(Object o) {System.out.println(o);}
 
-	// size_t http_parser_execute(http_parser *parser,
-  //                            const http_parser_settings *settings,
-  //                            const char *data,
-  //                            size_t len);
-	public int execute(ParserSettings settings, ByteBuffer data, int len) {
+  /** Execute the parser with the currently available data contained in
+   * the buffer. The buffers position() and limit() need to be set
+   * correctly (obviously) and a will be updated approriately when the
+   * method returns to reflect the consumed data.
+   */
+   public void execute(ParserSettings settings, ByteBuffer data) {
 //		p(">"+state);
 //		//TODO
 //  char c, ch;
 //  const char *p = data, *pe;
 //  ssize_t to_read;
 	int p = data.position();
-      len = (data.limit() - data.position());
+  int len = (data.limit() - data.position());
 
 //
 //!  enum state state = (enum state) parser->state;
@@ -2329,7 +2346,7 @@ p = data.position();
 //  return (p - data);
 //		return n;
 //		p("<"+state);
-	return len;
+	//return len;
 	
 }
 /* If http_should_keep_alive() in the on_headers_complete or
@@ -2486,7 +2503,7 @@ p = data.position();
 
         nread = 0;
 
-        if (0 != (flags & F_UPGRADE)) upgrade = 1;
+        if (0 != (flags & F_UPGRADE)) upgrade = true;
         /* Here we call the headers_complete callback. This is somewhat
          * different than other callbacks because if the user returns 1, we
          * will interpret that as saying that this message has no body. This

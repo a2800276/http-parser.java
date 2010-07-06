@@ -271,7 +271,7 @@ public class TestLoaderNG {
 
 			
 
-			p.execute(s, buf, -1);
+			p.execute(s, buf);
 			if (!s.success) {
 				throw new RuntimeException("Test: "+name+"failed");
 			}
@@ -313,7 +313,7 @@ public class TestLoaderNG {
 		} // execute_permutations
 		void parse(HTTPParser p, ParserSettings s, ByteBuffer b) {
 			//p("About to parse: "+b.position() + "->" + b.limit());
-			p.execute(s, b, -1);
+			p.execute(s, b);
 		}
 
 		TestSettings settings() {
