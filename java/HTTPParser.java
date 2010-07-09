@@ -164,6 +164,8 @@ public class  HTTPParser {
         case dead:
           throw new RuntimeException("Connection already closed");
 
+
+
         case start_res_or_resp:
           if (CR == ch || LF == ch){
             break;
@@ -184,6 +186,7 @@ public class  HTTPParser {
           break;
 
 
+
         case res_or_resp_H:
           if (T == ch) {
             type  = ParserType.HTTP_RESPONSE;
@@ -198,6 +201,7 @@ public class  HTTPParser {
             state  = State.req_method;
           }
           break;
+
 
 
         case start_res:
@@ -218,33 +222,34 @@ public class  HTTPParser {
           }
           break;
 
+
+
         case res_H:
           if (strict && T != ch) {
             throw new RuntimeException("Not T");
           }
           state = State.res_HT;
           break;
-
         case res_HT:
           if (strict && T != ch) {
             throw new RuntimeException("Not T");
           }
           state = State.res_HTT;
           break;
-
         case res_HTT:
           if (strict && P != ch) {
             throw new RuntimeException("Not P");
           }
           state = State.res_HTTP;
           break;
-
         case res_HTTP:
           if (strict && SLASH != ch) {
             throw new RuntimeException("Not '/'");
           }
           state = State.res_first_http_major;
           break;
+
+
 
         case res_first_http_major:
           if (!isDigit(ch)) {
@@ -271,7 +276,6 @@ public class  HTTPParser {
           }
           break;
           
-
         /* first digit of minor HTTP version */
         case res_first_http_minor:
           if (!isDigit(ch)) {
@@ -280,7 +284,6 @@ public class  HTTPParser {
           http_minor = (int)ch - 0x30;
           state = State.res_http_minor;
           break;
-
 
         /* minor HTTP version or end of request line */
         case res_http_minor:
@@ -300,6 +303,7 @@ public class  HTTPParser {
           break;
 
 
+
         case res_first_status_code:
           if (!isDigit(ch)) {
             if (SPACE == ch) {
@@ -310,7 +314,6 @@ public class  HTTPParser {
           status_code = (int)ch - 0x30;
           state = State.res_status_code;
           break;
-
 
         case res_status_code:
           if (!isDigit(ch)) {
@@ -336,7 +339,6 @@ public class  HTTPParser {
           }
           break;
 
-      
         case res_status:
           /* the human readable status. e.g. "NOT FOUND"
            * we are not humans so just ignore this 
@@ -352,13 +354,13 @@ public class  HTTPParser {
            }
            break;
 
-
         case res_line_almost_done:
           if (strict && LF != ch) {
             throw new RuntimeException("not LF");
           }
           state = State.header_field_start;
           break;
+
 
 
         case start_req:
@@ -373,6 +375,7 @@ public class  HTTPParser {
           state = State.req_method;
           break;
         
+
 
         case req_method:
           if ( 0 == ch) {
@@ -403,6 +406,8 @@ public class  HTTPParser {
           break;
       
 
+
+        /******************* URL *******************/
         case req_spaces_before_url:
           if (SPACE == ch) {
             break;
@@ -420,7 +425,6 @@ public class  HTTPParser {
           }
           throw new RuntimeException("Invalid, not sure what");
 
-
         case req_schema:
           if (isAtoZ(ch)){
             break;
@@ -434,14 +438,12 @@ public class  HTTPParser {
           }
           throw new RuntimeException("invalid char in schema: "+ch);
 
-
         case req_schema_slash:
           if (strict && SLASH != ch) {
             throw new RuntimeException("invalid char in schema, not /");
           }
           state = State.req_schema_slash_slash;
           break;
-
 
         case req_schema_slash_slash:
           if (strict && SLASH != ch) {
@@ -476,7 +478,6 @@ public class  HTTPParser {
           }
           break;
 
-
         case req_port:
           if (isDigit(ch)) break;
           switch (ch) {
@@ -498,7 +499,6 @@ public class  HTTPParser {
           }
           break;
       
-
         case req_path:
           if (usual(ch)) break;
           switch (ch) {
@@ -552,8 +552,7 @@ public class  HTTPParser {
               throw new RuntimeException("unexpected char in path");
           }
           break;
-
-            
+      
         case req_query_string_start:
           if (usual(ch)) {
             query_string_mark = p;
@@ -587,8 +586,6 @@ public class  HTTPParser {
               throw new RuntimeException("unexpected char in path");
           }
           break;
-
-
         
         case req_query_string:
           if (usual(ch)) {
@@ -637,7 +634,6 @@ public class  HTTPParser {
           }
           break;
 
-
         case req_fragment_start:
           if (usual(ch)) {
             fragment_mark = p;
@@ -676,8 +672,6 @@ public class  HTTPParser {
               throw new RuntimeException("unexpected char in path");
           }
           break;
-
-
 
         case req_fragment:
           if (usual(ch)) {
@@ -721,9 +715,11 @@ public class  HTTPParser {
               throw new RuntimeException("unexpected char in path");
           }
           break;
+        /******************* URL *******************/
 
 
 
+        /******************* HTTP 1.1 *******************/
         case req_http_start:
           switch (ch) {
             case H:
@@ -736,16 +732,12 @@ public class  HTTPParser {
           }
           break;
 
-
-
         case req_http_H:
           if (strict && T != ch) {
             throw new RuntimeException("unexpected char");
           }
           state = State.req_http_HT;
           break;
-
-          
 
         case req_http_HT:
           if (strict && T != ch) {
@@ -754,8 +746,6 @@ public class  HTTPParser {
           state = State.req_http_HTT;
           break;
 
-
-
         case req_http_HTT:
           if (strict && P != ch) {
             throw new RuntimeException("unexpected char");
@@ -763,16 +753,12 @@ public class  HTTPParser {
           state = State.req_http_HTTP;
           break;
 
-
-
         case req_http_HTTP:
             if (strict && SLASH != ch) {
               throw new RuntimeException("unexpected char");
             }
           state = req_first_http_major;
           break;
-
-
 
         /* first digit of major HTTP version */
         case req_first_http_major:
@@ -782,8 +768,6 @@ public class  HTTPParser {
           http_major = (int)ch - 0x30;
           state = State.req_http_major;
           break;
-
-
 
         /* major HTTP version or dot */
         case req_http_major:
@@ -804,8 +788,6 @@ public class  HTTPParser {
           };
           break;
         
-        
-        
         /* first digit of minor HTTP version */
         case req_first_http_minor:
           if (!isDigit(ch)) {
@@ -814,8 +796,6 @@ public class  HTTPParser {
           http_minor = (int)ch - 0x30;
           state = State.req_http_minor;
           break;
-
-
 
         case req_http_minor:
           if (ch == CR) {
@@ -844,8 +824,6 @@ public class  HTTPParser {
    
           break;
 
-
-
         /* end of request line */
         case req_line_almost_done:
         {
@@ -856,8 +834,11 @@ public class  HTTPParser {
           break;
         }
 
+        /******************* HTTP 1.1 *******************/
 
 
+
+        /******************* Header *******************/
         case header_field_start:
         {
           if (ch == CR) {
@@ -1008,8 +989,7 @@ public class  HTTPParser {
 
               default:
                 throw new RuntimeException("Unknown Header State");
-                //break;
-            } // switch header_state
+            } // switch: header_state
             break;
           } // 0 != c
 
@@ -1038,7 +1018,6 @@ public class  HTTPParser {
           }
 
           throw new RuntimeException("invalid header field");
-          //break;
         }
 
 
@@ -1115,7 +1094,7 @@ public class  HTTPParser {
               break;
           }
           break;
-        }
+        } // header value start
 
 
 
@@ -1132,7 +1111,6 @@ public class  HTTPParser {
             }
 
             if (LF == ch) {
-              //CALLBACK(header_value);
               settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
               header_value_mark = -1;
               
@@ -1148,9 +1126,7 @@ public class  HTTPParser {
 
             case connection:
             case transfer_encoding:
-              //assert(0 && "Shouldn't get here.");
               throw new RuntimeException("Shouldn't be here");
-              //break;
 
             case content_length:
               if (!isDigit(ch)) {
@@ -1203,7 +1179,7 @@ public class  HTTPParser {
               break;
           }
           break;
-        }
+        } // header_value
 
 
 
@@ -1211,14 +1187,16 @@ public class  HTTPParser {
           header_almost_done(ch);
           break;
 
-
-
         case headers_almost_done:
           headers_almost_done(ch, settings);
           break;
 
+        /******************* Header *******************/
 
 
+
+
+        /******************* Body *******************/
         case body_identity:
           to_read = min(pe - p, content_length); //TODO change to use buffer? 
 
@@ -1242,9 +1220,11 @@ public class  HTTPParser {
             data.position(p+to_read);
           }
           break;
+        /******************* Body *******************/
 
 
 
+        /******************* Chunk *******************/
         case chunk_size_start:
           if (0 == (flags & F_CHUNKED)) {
             throw new RuntimeException("not chunked");
@@ -1258,204 +1238,129 @@ public class  HTTPParser {
           state = State.chunk_size;
           break;
 
-    //      case s_chunk_size:
-    //      {
-    //        assert(parser->flags & F_CHUNKED);
-    //
-    //        if (ch == CR) {
-    //          state = s_chunk_size_almost_done;
-    //          break;
-    //        }
-    //
-    //        c = unhex[(int)ch];
-    //
-    //        if (c == -1) {
-    //          if (ch == ';' || ch == ' ') {
-    //            state = s_chunk_parameters;
-    //            break;
-    //          }
-    //          goto error;
-    //        }
-    //
-    //        parser->content_length *= 16;
-    //        parser->content_length += c;
-    //        break;
-    //      }
-          case chunk_size:
-            if (0 == (flags & F_CHUNKED)) {
-              throw new RuntimeException("not chunked");
-            }
 
-            if (CR == ch) {
-              state = State.chunk_size_almost_done;
-              break;
-            }
 
-            c = UNHEX[ch];
+        case chunk_size:
+          if (0 == (flags & F_CHUNKED)) {
+            throw new RuntimeException("not chunked");
+          }
 
-            if (c == -1) {
-              if (SEMI == ch || SPACE == ch) {
-                state = State.chunk_parameters;
-                break;
-              }
-              throw new RuntimeException("invalid char in chunk length");
-            }
-
-            content_length *= 16;
-            content_length += c;
-            break;
-
-    //      case s_chunk_parameters:
-    //      {
-    //        assert(parser->flags & F_CHUNKED);
-    //        /* just ignore this shit. TODO check for overflow */
-    //        if (ch == CR) {
-    //          state = s_chunk_size_almost_done;
-    //          break;
-    //        }
-    //        break;
-    //      }
-
-          case chunk_parameters:
-            if (0 == (flags & F_CHUNKED)) {
-              throw new RuntimeException("not chunked");
-            }
-            /* just ignore this shit. TODO check for overflow */
-            if (CR == ch ) {
-              state = State.chunk_size_almost_done;
-              break;
-            }
-            break;
-          
-
-          case chunk_size_almost_done:
-            if (0 == (flags & F_CHUNKED)) {
-              throw new RuntimeException("not chunked");
-            }
-            if (LF != ch) {
-              throw new RuntimeException("expected LF at end of chunk size");
-            }
-
-            if (0 == content_length) {
-              flags |= F_TRAILING;
-              state = State.header_field_start;
-            } else {
-              state = State.chunk_data;
-            }
-            break;
-
-    //      case s_chunk_data:
-    //      {
-    //        assert(parser->flags & F_CHUNKED);
-    //
-    //        to_read = MIN(pe - p, (ssize_t)(parser->content_length));
-    //
-    //        if (to_read > 0) {
-    //          if (settings->on_body) settings->on_body(parser, p, to_read);
-    //          p += to_read - 1;
-    //        }
-    //
-    //        if (to_read == parser->content_length) {
-    //          state = s_chunk_data_almost_done;
-    //        }
-    //
-    //        parser->content_length -= to_read;
-    //        break;
-    //      }
-    //
-          case chunk_data:
-          {
-            if (0 == (flags & F_CHUNKED)) {
-              throw new RuntimeException("not chunked");
-            }
-
-            //to_read = MIN(pe - p, (ssize_t)(parser->content_length)); 
-            to_read = min(pe-p, content_length);
-            if (to_read > 0) {
-              // if (settings->on_body) settings->on_body(parser, p, to_read); 
-              settings.call_on_body(this, data, p, to_read);
-              // p += to_read - 1; 
-              data.position(p+to_read);
-            }
-
-            if (to_read == content_length) {
-              state = State.chunk_data_almost_done;
-            }
-
-            content_length -= to_read;
+          if (CR == ch) {
+            state = State.chunk_size_almost_done;
             break;
           }
-    //
-    //      case s_chunk_data_almost_done:
-    //        assert(parser->flags & F_CHUNKED);
-    //        STRICT_CHECK(ch != CR);
-    //        state = s_chunk_data_done;
-    //        break;
-    //
-    //
-          case chunk_data_almost_done:
-            if (0 == (flags & F_CHUNKED)) {
-              throw new RuntimeException("not chunked");
-            }
-            if (CR != ch) {
-              throw new RuntimeException("chunk data terminated invcorrectly, expected CR");
-            }
-            state = State.chunk_data_done;
-            break;
 
-    //      case s_chunk_data_done:
-    //        assert(parser->flags & F_CHUNKED);
-    //        STRICT_CHECK(ch != LF);
-    //        state = s_chunk_size_start;
-    //        break;
-          case chunk_data_done:
-            if (0 == (flags & F_CHUNKED)) {
-              throw new RuntimeException("not chunked");
+          c = UNHEX[ch];
+
+          if (c == -1) {
+            if (SEMI == ch || SPACE == ch) {
+              state = State.chunk_parameters;
+              break;
             }
-            if (LF != ch) {
-              throw new RuntimeException("chunk data terminated invcorrectly, expected LF");
-            }
-            state = State.chunk_size_start;
+            throw new RuntimeException("invalid char in chunk length");
+          }
+
+          content_length *= 16;
+          content_length += c;
+          break;
+
+
+
+        case chunk_parameters:
+          if (0 == (flags & F_CHUNKED)) {
+            throw new RuntimeException("not chunked");
+          }
+          /* just ignore this shit. TODO check for overflow */
+          if (CR == ch) {
+            state = State.chunk_size_almost_done;
             break;
-    //
-    //      default:
-    //        assert(0 && "unhandled state");
-    //        goto error;
+          }
+          break;
+          
+
+
+        case chunk_size_almost_done:
+          if (0 == (flags & F_CHUNKED)) {
+            throw new RuntimeException("not chunked");
+          }
+          if (strict && LF != ch) {
+            throw new RuntimeException("expected LF at end of chunk size");
+          }
+
+          if (0 == content_length) {
+            flags |= F_TRAILING;
+            state = State.header_field_start;
+          } else {
+            state = State.chunk_data;
+          }
+          break;
+
+
+
+        case chunk_data:
+        {
+          if (0 == (flags & F_CHUNKED)) {
+            throw new RuntimeException("not chunked");
+          }
+
+          to_read = min(pe-p, content_length);
+          if (to_read > 0) {
+            settings.call_on_body(this, data, p, to_read);
+            data.position(p+to_read);
+          }
+
+          if (to_read == content_length) {
+            state = State.chunk_data_almost_done;
+          }
+
+          content_length -= to_read;
+          break;
+        }
+
+
+
+        case chunk_data_almost_done:
+          if (0 == (flags & F_CHUNKED)) {
+            throw new RuntimeException("not chunked");
+          }
+          if (strict && CR != ch) {
+            throw new RuntimeException("chunk data terminated invcorrectly, expected CR");
+          }
+          state = State.chunk_data_done;
+          break;
+
+
+
+        case chunk_data_done:
+          if (0 == (flags & F_CHUNKED)) {
+            throw new RuntimeException("not chunked");
+          }
+          if (strict && LF != ch) {
+            throw new RuntimeException("chunk data terminated invcorrectly, expected LF");
+          }
+          state = State.chunk_size_start;
+          break;
+        /******************* Chunk *******************/
+    
+        
+        
         default:
           throw new RuntimeException("unhandled state");
           
-    //    }
       } // switch
     } // while
-//
-p = data.position();
-//  CALLBACK_NOCLEAR(header_field);
-	settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
-//  CALLBACK_NOCLEAR(header_value);
-	settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
-//  CALLBACK_NOCLEAR(fragment);
-	settings.call_on_fragment(this, data, fragment_mark, p-fragment_mark);
-//  CALLBACK_NOCLEAR(query_string);
-	settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
-//  CALLBACK_NOCLEAR(path);
-	settings.call_on_path(this, data, path_mark, p-path_mark);
-//  CALLBACK_NOCLEAR(url);
-	settings.call_on_url(this, data, url_mark, p-url_mark);
-//
-//  parser->state = state;
-//  parser->header_state = header_state;
-//  parser->index = index;
-//  parser->nread = nread;
-//
-//  return len;
-//
-//error:
-//  return (p - data);
-//		return n;
-//		p("<"+state);
-	//return len;
+
+    p = data.position();
+
+	  settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
+    settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
+    settings.call_on_fragment    (this, data, fragment_mark,     p-fragment_mark);
+    settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
+    settings.call_on_path        (this, data, path_mark,         p-path_mark);
+    settings.call_on_url         (this, data, url_mark,          p-url_mark);
 	
 }
+
 /* If http_should_keep_alive() in the on_headers_complete or
  * on_message_complete callback returns true, then this will be should be
  * the last message on the connection.
