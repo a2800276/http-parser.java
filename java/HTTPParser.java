@@ -86,6 +86,10 @@ public class  HTTPParser {
    */
 	static void p(Object o) {System.out.println(o);}
 
+  void error (String mes, ParserSettings settings, ByteBuffer b, int begining) {
+  
+  }
+
   /** Execute the parser with the currently available data contained in
    * the buffer. The buffers position() and limit() need to be set
    * correctly (obviously) and a will be updated approriately when the
@@ -93,7 +97,8 @@ public class  HTTPParser {
    */
   public void execute(ParserSettings settings, ByteBuffer data) {
 
-    int p   = data.position();
+    int p    = data.position();
+    int perr = p; // this is used for pretty printing errors.
 
     // In case the headers don't provide information about the content
     // length, `execute` needs to be called with an empty buffer to
@@ -193,7 +198,7 @@ public class  HTTPParser {
             state = State.res_HT;
           } else {
             if (E != ch) {
-              throw new RuntimeException("not 'E'");
+              error ("not 'E'", buf, perr);
             }
             type   = ParserType.HTTP_REQUEST;
             method = HTTPMethod.HTTP_HEAD;
