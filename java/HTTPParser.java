@@ -1352,6 +1352,10 @@ public class  HTTPParser {
 
     p = data.position();
 
+
+    /* Reaching this point assumes that we only received part of a
+     * message, inform the callbacks about the progress made so far*/
+    
 	  settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
     settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
     settings.call_on_fragment    (this, data, fragment_mark,     p-fragment_mark);
@@ -1359,242 +1363,246 @@ public class  HTTPParser {
     settings.call_on_path        (this, data, path_mark,         p-path_mark);
     settings.call_on_url         (this, data, url_mark,          p-url_mark);
 	
-}
+  } // execute
 
-/* If http_should_keep_alive() in the on_headers_complete or
- * on_message_complete callback returns true, then this will be should be
- * the last message on the connection.
- * If you are the server, respond with the "Connection: close" header.
- * If you are the client, close the connection.
- */
-	boolean http_should_keep_alive() {
-		if (http_major > 0 && http_minor > 0) {
-			/* HTTP/1.1 */
-			if ( 0 != (flags & F_CONNECTION_CLOSE) ) {
-				return false;
-			} else {
-				return true;
-			}
-		} else {
-			/* HTTP/1.0 or earlier */
-			if ( 0 != (flags & F_CONNECTION_KEEP_ALIVE) ) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-	}
-	boolean isDigit(byte b) {
-		if (b >= 0x30 && b <=0x39) {
-			return true;
-		}
-		return false;
-	}
-
-	boolean isAtoZ(byte b) {
-		byte c = lower(b);
-		return (c>= 0x61 /*a*/ && c <=  0x7a /*z*/);
-	}
-
-	boolean usual(byte b) {
-		// TODO check wtf this does...
-
-		//static const uint32_t  usual[] = {
-		//    0xffffdbfe, /* 1111 1111 1111 1111  1101 1011 1111 1110 */
-		//
-		//                /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-		//    0x7ffffff6, /* 0111 1111 1111 1111  1111 1111 1111 0110 */
-		//
-		//                /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
-		//    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-		//
-		//                /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
-		//    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-		//
-		//    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-		//    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-		//    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-		//    0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-		//};
-		//
-		//#define USUAL(c) (usual[c >> 5] & (1 << (c & 0x1f)))
-		
-		switch (b) {
-			case NULL:
-			case CR:
-			case LF:
-			case SPACE:
-			case QMARK:
-			case HASH:
-				return false;
-		}
-		return true;
-	
-	}
-
-	byte lower (byte b) {
-		return (byte)(b|0x20);
-	}
-
-	byte upper(byte b) {
-		char c = (char)(b);
-		return (byte)Character.toUpperCase(c);
-	}
-	
-
-	void start_req_method_assign(byte c){
-		switch (c) {
-			case C: method = HTTPMethod.HTTP_CONNECT; break; /* or COPY */
-			case D: method = HTTPMethod.HTTP_DELETE;  break;
-			case G: method = HTTPMethod.HTTP_GET;     break;
-			case H: method = HTTPMethod.HTTP_HEAD;    break;
-			case L: method = HTTPMethod.HTTP_LOCK;    break;
-			case M: method = HTTPMethod.HTTP_MKCOL;   break; /* or MOVE */
-			case O: method = HTTPMethod.HTTP_OPTIONS; break;
-			case P: method = HTTPMethod.HTTP_POST;    break; /* or PROPFIND, PROPPATH, PUT */
-			case T: method = HTTPMethod.HTTP_TRACE;   break;
-			case U: method = HTTPMethod.HTTP_UNLOCK;  break;
-			default:
-				throw new RuntimeException("Invalid Method: "+c);
-		}
-	}
-
-      void header_almost_done(byte ch) {
-				if (strict && LF != ch) {
-					throw new RuntimeException("incorrect header ending, expection LF");
-				}
-
-        state = State.header_field_start;
-        // TODO java enums support some sort of bitflag mechanism !?
-        switch (header_state) {
-          case connection_keep_alive:
-            flags |= F_CONNECTION_KEEP_ALIVE;
-            break;
-          case connection_close:
-            flags |= F_CONNECTION_CLOSE;
-            break;
-          case transfer_encoding_chunked:
-            flags |= F_CHUNKED;
-            break;
-          default:
-            break;
-        }
+  /* If http_should_keep_alive() in the on_headers_complete or
+   * on_message_complete callback returns true, then this will be should be
+   * the last message on the connection.
+   * If you are the server, respond with the "Connection: close" header.
+   * If you are the client, close the connection.
+   */
+  boolean http_should_keep_alive() {
+    if (http_major > 0 && http_minor > 0) {
+      /* HTTP/1.1 */
+      if ( 0 != (flags & F_CONNECTION_CLOSE) ) {
+        return false;
+      } else {
+        return true;
       }
+    } else {
+      /* HTTP/1.0 or earlier */
+      if ( 0 != (flags & F_CONNECTION_KEEP_ALIVE) ) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
 
-      void headers_almost_done (byte ch, ParserSettings settings) {
+  boolean isDigit(byte b) {
+    if (b >= 0x30 && b <=0x39) {
+      return true;
+    }
+    return false;
+  }
 
-				if (LF != ch) {
-					throw new RuntimeException("header not properly completed");
-				}
+  boolean isAtoZ(byte b) {
+    byte c = lower(b);
+    return (c>= 0x61 /*a*/ && c <=  0x7a /*z*/);
+  }
 
-        if (0 != (flags & F_TRAILING)) {
-          /* End of a chunked request */
+  boolean usual(byte b) {
 
-          settings.call_on_headers_complete(this);
-					settings.call_on_message_complete(this);
+    //static const uint32_t  usual[] = {
+    //    0xffffdbfe, /* 1111 1111 1111 1111  1101 1011 1111 1110 */
+    //
+    //                /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+    //    0x7ffffff6, /* 0111 1111 1111 1111  1111 1111 1111 0110 */
+    //
+    //                /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    //
+    //                /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    //
+    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    //    0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    //};
+    //
+    //#define USUAL(c) (usual[c >> 5] & (1 << (c & 0x1f)))
 
+    switch (b) {
+      case NULL:
+      case CR:
+      case LF:
+      case SPACE:
+      case QMARK:
+      case HASH:
+        return false;
+    }
+    return true;
+
+  }
+
+  byte lower (byte b) {
+    return (byte)(b|0x20);
+  }
+
+  byte upper(byte b) {
+    char c = (char)(b);
+    return (byte)Character.toUpperCase(c);
+  }
+	
+
+  void start_req_method_assign(byte c){
+    switch (c) {
+      case C: method = HTTPMethod.HTTP_CONNECT; break; /* or COPY */
+      case D: method = HTTPMethod.HTTP_DELETE;  break;
+      case G: method = HTTPMethod.HTTP_GET;     break;
+      case H: method = HTTPMethod.HTTP_HEAD;    break;
+      case L: method = HTTPMethod.HTTP_LOCK;    break;
+      case M: method = HTTPMethod.HTTP_MKCOL;   break; /* or MOVE */
+      case O: method = HTTPMethod.HTTP_OPTIONS; break;
+      case P: method = HTTPMethod.HTTP_POST;    break; /* or PROPFIND, PROPPATH, PUT */
+      case T: method = HTTPMethod.HTTP_TRACE;   break;
+      case U: method = HTTPMethod.HTTP_UNLOCK;  break;
+      default:
+              throw new RuntimeException("Invalid Method: "+c);
+    }
+  }
+
+  void header_almost_done(byte ch) {
+    if (strict && LF != ch) {
+      throw new RuntimeException("incorrect header ending, expection LF");
+    }
+
+    state = State.header_field_start;
+    // TODO java enums support some sort of bitflag mechanism !?
+    switch (header_state) {
+      case connection_keep_alive:
+        flags |= F_CONNECTION_KEEP_ALIVE;
+        break;
+      case connection_close:
+        flags |= F_CONNECTION_CLOSE;
+        break;
+      case transfer_encoding_chunked:
+        flags |= F_CHUNKED;
+        break;
+      default:
+        break;
+    }
+  }
+
+  void headers_almost_done (byte ch, ParserSettings settings) {
+
+    if (LF != ch) {
+      throw new RuntimeException("header not properly completed");
+    }
+
+    if (0 != (flags & F_TRAILING)) {
+      /* End of a chunked request */
+
+      settings.call_on_headers_complete(this);
+      settings.call_on_message_complete(this);
+
+      state = new_message(); 
+
+      return;
+    }
+
+    nread = 0;
+
+    if (0 != (flags & F_UPGRADE)) upgrade = true;
+
+    /* Here we call the headers_complete callback. This is somewhat
+     * different than other callbacks because if the user returns 1, we
+     * will interpret that as saying that this message has no body. This
+     * is needed for the annoying case of recieving a response to a HEAD
+     * request.
+     */
+
+    /* (responses to HEAD request contain a CONTENT-LENGTH header
+     * but no content)
+     *
+     * Consider what to do here: I don't like the idea of the callback
+     * interface having a different contract in the case of HEAD
+     * responses. The alternatives would be either to:
+     *
+     * a.) require the header_complete callback to implement a different
+     * interface or
+     *
+     * b.) provide an overridden execute(bla, bla, boolean
+     * parsingHeader) implementation ...
+     */
+
+    /*TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO */ 
+    if (null != settings.on_headers_complete) {
+      settings.call_on_headers_complete(this);
+      //return;
+    }
+    
+    //        if (null != settings.on_headers_complete) {
+    //          switch (settings.on_headers_complete.cb(parser)) {
+    //            case 0:
+    //              break;
+    //
+    //            case 1:
+    //              flags |= F_SKIPBODY;
+    //              break;
+    //
+    //            default:
+    //              return p - data; /* Error */ // TODO // RuntimeException ?
+    //          }
+    //        }
+
+
+    // Exit, the rest of the connect is in a different protocol.
+    if (0 != (flags & F_UPGRADE)) {
+      settings.call_on_message_complete(this);
+      return;
+    }
+
+    if (0 != (flags & F_SKIPBODY)) {
+      settings.call_on_message_complete(this);
+      state = new_message(); 
+    } else if (0 != (flags & F_CHUNKED)) {
+      /* chunked encoding - ignore Content-Length header */
+      state = State.chunk_size_start;
+    } else {
+      if (content_length == 0) {
+        /* Content-Length header given but zero: Content-Length: 0\r\n */
+        settings.call_on_message_complete(this);
+        state = new_message(); 
+      } else if (content_length > 0) {
+        /* Content-Length header given and non-zero */
+        state = State.body_identity;
+      } else {
+        if (type == ParserType.HTTP_REQUEST || http_should_keep_alive()) {
+          /* Assume content-length 0 - read the next */
+          settings.call_on_message_complete(this);
           state = new_message(); 
-
-					return;
-        }
-
-        nread = 0;
-
-        if (0 != (flags & F_UPGRADE)) upgrade = true;
-
-        /* Here we call the headers_complete callback. This is somewhat
-         * different than other callbacks because if the user returns 1, we
-         * will interpret that as saying that this message has no body. This
-         * is needed for the annoying case of recieving a response to a HEAD
-         * request.
-         */
-
-        /* (responses to HEAD request contain a CONTENT-LENGTH header
-         * but no content)
-         */
-
-        /*TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO */ 
-        if (null != settings.on_headers_complete) {
-          settings.call_on_headers_complete(this);
-          //return;
-        }
-//        if (null != settings.on_headers_complete) {
-//          switch (settings.on_headers_complete.cb(parser)) {
-//            case 0:
-//              break;
-//
-//            case 1:
-//              flags |= F_SKIPBODY;
-//              break;
-//
-//            default:
-//              return p - data; /* Error */ // TODO // RuntimeException ?
-//          }
-//        }
-
-
-        // Exit, the rest of the connect is in a different protocol.
-        if (0 != (flags & F_UPGRADE)) {
-					settings.call_on_message_complete(this);
-          // TODO return (p - data); 
-          // TODO remember initial buf.position as data?
-					return;
-        }
-
-        if (0 != (flags & F_SKIPBODY)) {
-					settings.call_on_message_complete(this);
-          state = new_message(); 
-        } else if (0 != (flags & F_CHUNKED)) {
-          /* chunked encoding - ignore Content-Length header */
-          state = State.chunk_size_start;
         } else {
-          if (content_length == 0) {
-            /* Content-Length header given but zero: Content-Length: 0\r\n */
-						settings.call_on_message_complete(this);
-            state = new_message(); 
-          } else if (content_length > 0) {
-            /* Content-Length header given and non-zero */
-            state = State.body_identity;
-          } else {
-            if (type == ParserType.HTTP_REQUEST || http_should_keep_alive()) {
-              /* Assume content-length 0 - read the next */
-							settings.call_on_message_complete(this);
-              state = new_message(); 
-            } else {
-              /* Read body until EOF */
-              state = State.body_identity_eof;
-            }
-          }
+          /* Read body until EOF */
+          state = State.body_identity_eof;
         }
-
-      } // headers_almost_fone
-
-
-      final int min (int a, int b) {
-        return a < b ? a : b;
       }
+    }
 
-	public boolean HTTP_PARSER_STRICT = true;
-	State new_message() {
-		//try {throw new Exception();}catch (Throwable t) {t.printStackTrace();}
-		if (HTTP_PARSER_STRICT){
-			return http_should_keep_alive() ? start_state() : State.dead;
-		} else {
-			return start_state();
-		}
-		
-	}
+  } // headers_almost_fone
+
+
+  final int min (int a, int b) {
+    return a < b ? a : b;
+  }
+  
+  /* probably not the best place to hide this ... */
+	public boolean HTTP_PARSER_STRICT;
+  State new_message() {
+    if (HTTP_PARSER_STRICT){
+      return http_should_keep_alive() ? start_state() : State.dead;
+    } else {
+      return start_state();
+    }
+
+  }
 	
-	State start_state() {
-		return type == ParserType.HTTP_REQUEST ? State.start_req : State.start_res;
-	}
+  State start_state() {
+    return type == ParserType.HTTP_REQUEST ? State.start_req : State.start_res;
+  }
 
-	byte peak(ByteBuffer buf) {
-		buf.mark();
-		byte b = buf.get();
-		buf.rewind();
-		return b;
-	}
+
 	boolean parsing_header(State state) {
 
 		switch (state) {
