@@ -1,4 +1,4 @@
-package http_parser;
+package http_parser.lolevel;
 // name  : 200 trailing space on chunked body
 // raw   : "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n25  \r\nThis is the data in the first chunk\r\n\r\n1C\r\nand this is the second one\r\n\r\n0  \r\n\r\n"
 // type  : HTTP_RESPONSE
@@ -25,6 +25,8 @@ import java.util.*;
 import java.util.regex.*;
 
 import java.nio.ByteBuffer;
+
+import http_parser.HTTPMethod;
 
 public class TestLoaderNG {
 	String fn;

@@ -25,7 +25,7 @@ public enum HTTPMethod {
 	static {
 		ASCII = Charset.forName("US-ASCII");;
 	}
-	byte[] bytes;
+	public byte[] bytes;
 
 	HTTPMethod(String name) {
 		// good grief, Charlie Brown, the following is necessary because 

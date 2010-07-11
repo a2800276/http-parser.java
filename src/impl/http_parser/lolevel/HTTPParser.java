@@ -1,8 +1,10 @@
-package http_parser;
+package http_parser.lolevel;
 
 import java.nio.ByteBuffer;
-import static http_parser.HTTPParser.C.*;
-import static http_parser.HTTPParser.State.*;
+import http_parser.HTTPException;
+import http_parser.HTTPMethod;
+import static http_parser.lolevel.HTTPParser.C.*;
+import static http_parser.lolevel.HTTPParser.State.*;
 
 public class  HTTPParser {
 	/* lots of unsigned chars here, not sure what
@@ -77,7 +79,7 @@ public class  HTTPParser {
 				this.state = State.start_res_or_resp;
 				break;
 			default:
-				throw new RuntimeException("can't happen, invalid ParserType enum");
+				throw new HTTPException("can't happen, invalid ParserType enum");
 		}
 	}
 	
@@ -161,7 +163,7 @@ public class  HTTPParser {
 
 
       b.position(p); // restore position
-      throw new RuntimeException(builder.toString());
+      throw new HTTPException(builder.toString());
 
   }
 
@@ -172,8 +174,8 @@ public class  HTTPParser {
    */
   public void execute(ParserSettings settings, ByteBuffer data) {
 
-    int p    = data.position();
-    int perr = p; // this is used for pretty printing errors.
+    int p     = data.position();
+    int p_err = p; // this is used for pretty printing errors.
 
     // In case the headers don't provide information about the content
     // length, `execute` needs to be called with an empty buffer to
@@ -232,7 +234,7 @@ public class  HTTPParser {
       if (parsing_header(state)) {
         ++nread;
         if (nread > HTTP_MAX_HEADER_SIZE) {
-          throw new RuntimeException("possible buffer overflow"); 
+          settings.call_on_error(this, "possible buffer overflow", data, p_err);
         }
       }
 
@@ -242,7 +244,7 @@ public class  HTTPParser {
           * the parser will error out if it reads another message
           */
         case dead:
-          throw new RuntimeException("Connection already closed");
+          settings.call_on_error(this, "Connection already closed", data, p_err);
 
 
 
@@ -258,10 +260,13 @@ public class  HTTPParser {
           if (H == ch) { 
             state = State.res_or_resp_H;
           } else {
-            type = ParserType.HTTP_REQUEST;  
-            start_req_method_assign(ch);     // ... goto start_req_method_assign ...
-            index = 1;
-            state = State.req_method;
+            type   = ParserType.HTTP_REQUEST;  
+            method = start_req_method_assign(ch);     
+            if (null == method) {
+              settings.call_on_error(this, "invalid method", data, p_err);
+            }
+            index  = 1;
+            state  = State.req_method;
           }
           break;
 
@@ -273,8 +278,7 @@ public class  HTTPParser {
             state = State.res_HT;
           } else {
             if (E != ch) {
-              //error ("not 'E'", buf, perr);
-              throw new RuntimeException("not E");
+              settings.call_on_error(this, "not E", data, p_err);
             }
             type   = ParserType.HTTP_REQUEST;
             method = HTTPMethod.HTTP_HEAD;
@@ -299,7 +303,7 @@ public class  HTTPParser {
             case LF:
               break;
             default:
-              throw new RuntimeException("Not H or CR/LF");
+              settings.call_on_error(this, "Not H or CR/LF", data, p_err);
           }
           break;
 
@@ -307,25 +311,25 @@ public class  HTTPParser {
 
         case res_H:
           if (strict && T != ch) {
-            throw new RuntimeException("Not T");
+            settings.call_on_error(this, "Not T", data, p_err);
           }
           state = State.res_HT;
           break;
         case res_HT:
           if (strict && T != ch) {
-            throw new RuntimeException("Not T");
+            settings.call_on_error(this, "Not T2", data, p_err);
           }
           state = State.res_HTT;
           break;
         case res_HTT:
           if (strict && P != ch) {
-            throw new RuntimeException("Not P");
+            settings.call_on_error(this, "Not P", data, p_err);
           }
           state = State.res_HTTP;
           break;
         case res_HTTP:
           if (strict && SLASH != ch) {
-            throw new RuntimeException("Not '/'");
+            settings.call_on_error(this, "Not '/'", data, p_err);
           }
           state = State.res_first_http_major;
           break;
@@ -334,7 +338,7 @@ public class  HTTPParser {
 
         case res_first_http_major:
           if (!isDigit(ch)) {
-            throw new RuntimeException("Not a digit");
+            settings.call_on_error(this, "Not a digit", data, p_err);
           }
           http_major = (int) ch - 0x30;
           state = State.res_http_major;
@@ -347,20 +351,20 @@ public class  HTTPParser {
             break;
           }
           if (!isDigit(ch)) {
-            throw new RuntimeException("not a digit");			
+            settings.call_on_error(this, "Not a digit", data, p_err);
           }
           http_major *= 10;
           http_major += (ch - 0x30);
 
           if (http_major > 999) {
-            throw new RuntimeException("invalid http major version: "+http_major);
+            settings.call_on_error(this, "invalid http major version: "+http_major, data, p_err);
           }
           break;
           
         /* first digit of minor HTTP version */
         case res_first_http_minor:
           if (!isDigit(ch)) {
-            throw new RuntimeException("not a digit");
+            settings.call_on_error(this, "Not a digit", data, p_err);
           }
           http_minor = (int)ch - 0x30;
           state = State.res_http_minor;
@@ -373,13 +377,13 @@ public class  HTTPParser {
             break;
           }
           if (!isDigit(ch)) {
-            throw new RuntimeException("not a digit");			
+            settings.call_on_error(this, "Not a digit", data, p_err);
           }
           http_minor *= 10;
           http_minor += (ch - 0x30);
 
           if (http_minor > 999) {
-            throw new RuntimeException("invalid http minor version: "+http_major);
+            settings.call_on_error(this, "invalid http minor version: "+http_minor, data, p_err);
           }
           break;
 
@@ -390,7 +394,7 @@ public class  HTTPParser {
             if (SPACE == ch) {
               break;
             }
-            throw new RuntimeException("non-digit in status code");
+            settings.call_on_error(this, "Not a digit (status code)", data, p_err);
           }
           status_code = (int)ch - 0x30;
           state = State.res_status_code;
@@ -409,14 +413,14 @@ public class  HTTPParser {
                 state = State.header_field_start;
                 break;
               default:
-                throw new RuntimeException("not a valid status code");
+                settings.call_on_error(this, "not a valid status code", data, p_err);
             }
             break;
           }
           status_code *= 10;
           status_code += (int)ch - 0x30;
           if (status_code > 999) {
-            throw new RuntimeException("ridiculous status code:"+status_code);
+            settings.call_on_error(this, "ridiculous status code:"+status_code, data, p_err);
           }
           break;
 
@@ -437,7 +441,7 @@ public class  HTTPParser {
 
         case res_line_almost_done:
           if (strict && LF != ch) {
-            throw new RuntimeException("not LF");
+            settings.call_on_error(this, "not LF", data, p_err);
           }
           state = State.header_field_start;
           break;
@@ -451,16 +455,19 @@ public class  HTTPParser {
           flags = 0;
           content_length = -1;
           settings.call_on_message_begin(this);
-          start_req_method_assign(ch);
-          index = 1;
-          state = State.req_method;
+          method = start_req_method_assign(ch);
+          if (null == method) {
+            settings.call_on_error(this, "invalid method", data, p_err);
+          }
+          index  = 1;
+          state  = State.req_method;
           break;
         
 
 
         case req_method:
-          if ( 0 == ch) {
-            throw new RuntimeException("NULL in message");
+          if (0 == ch) {
+            settings.call_on_error(this, "NULL in method", data, p_err);
           }
           
           byte [] arr = method.bytes;
@@ -480,7 +487,7 @@ public class  HTTPParser {
           } else if (4 == index && HTTPMethod.HTTP_PROPFIND == method && P == ch) {
             method = HTTPMethod.HTTP_PROPPATCH;
           } else {
-            throw new RuntimeException("Invalid HTTP method");
+            settings.call_on_error(this, "Invalid HTTP method", data, p_err);
           }
 
           ++index;
@@ -504,7 +511,7 @@ public class  HTTPParser {
             state = State.req_schema;
             break;
           }
-          throw new RuntimeException("Invalid, not sure what");
+          settings.call_on_error(this, "Invalid something", data, p_err);
 
         case req_schema:
           if (isAtoZ(ch)){
@@ -517,18 +524,18 @@ public class  HTTPParser {
             state = State.req_host;
             break;
           }
-          throw new RuntimeException("invalid char in schema: "+ch);
+          settings.call_on_error(this, "invalid char in schema: "+ch, data, p_err);
 
         case req_schema_slash:
           if (strict && SLASH != ch) {
-            throw new RuntimeException("invalid char in schema, not /");
+            settings.call_on_error(this, "invalid char in schema, not /", data, p_err);
           }
           state = State.req_schema_slash_slash;
           break;
 
         case req_schema_slash_slash:
           if (strict && SLASH != ch) {
-            throw new RuntimeException("invalid char in schema, not /");
+            settings.call_on_error(this, "invalid char in schema, not /", data, p_err);
           }
           state = State.req_host;
           break;
@@ -555,7 +562,7 @@ public class  HTTPParser {
               state = State.req_http_start;
               break;
             default:
-              throw new RuntimeException("host error in method line");
+              settings.call_on_error(this, "host error in method line", data, p_err);
           }
           break;
 
@@ -576,7 +583,7 @@ public class  HTTPParser {
               state = State.req_http_start;
               break;
             default:
-              throw new RuntimeException("invalid port");
+              settings.call_on_error(this, "invalid port", data, p_err);
           }
           break;
       
@@ -630,7 +637,7 @@ public class  HTTPParser {
               break;
             
             default:
-              throw new RuntimeException("unexpected char in path");
+              settings.call_on_error(this, "unexpected char in path", data, p_err);
           }
           break;
       
@@ -664,7 +671,7 @@ public class  HTTPParser {
               state = State.req_fragment_start;
               break;
             default:
-              throw new RuntimeException("unexpected char in path");
+              settings.call_on_error(this, "unexpected char in path", data, p_err);
           }
           break;
         
@@ -711,7 +718,7 @@ public class  HTTPParser {
               state = State.req_fragment_start;
               break;
             default:
-              throw new RuntimeException("unexpected char in path");
+              settings.call_on_error(this, "unexpected char in path", data, p_err);
           }
           break;
 
@@ -750,7 +757,7 @@ public class  HTTPParser {
             case HASH:
               break;
             default:
-              throw new RuntimeException("unexpected char in path");
+              settings.call_on_error(this, "unexpected char in path", data, p_err);
           }
           break;
 
@@ -793,7 +800,7 @@ public class  HTTPParser {
             case HASH:
               break;
             default:
-              throw new RuntimeException("unexpected char in path");
+              settings.call_on_error(this, "unexpected char in path", data, p_err);
           }
           break;
         /******************* URL *******************/
@@ -809,42 +816,42 @@ public class  HTTPParser {
             case SPACE:
               break;
             default:
-              throw new RuntimeException("error in req_http_H");
+              settings.call_on_error(this, "error in req_http_H", data, p_err);
           }
           break;
 
         case req_http_H:
           if (strict && T != ch) {
-            throw new RuntimeException("unexpected char");
+            settings.call_on_error(this, "unexpected char", data, p_err);
           }
           state = State.req_http_HT;
           break;
 
         case req_http_HT:
           if (strict && T != ch) {
-            throw new RuntimeException("unexpected char");
+            settings.call_on_error(this, "unexpected char", data, p_err);
           }
           state = State.req_http_HTT;
           break;
 
         case req_http_HTT:
           if (strict && P != ch) {
-            throw new RuntimeException("unexpected char");
+            settings.call_on_error(this, "unexpected char", data, p_err);
           }
           state = State.req_http_HTTP;
           break;
 
         case req_http_HTTP:
-            if (strict && SLASH != ch) {
-              throw new RuntimeException("unexpected char");
-            }
+          if (strict && SLASH != ch) {
+            settings.call_on_error(this, "unexpected char", data, p_err);
+          }
           state = req_first_http_major;
           break;
 
         /* first digit of major HTTP version */
         case req_first_http_major:
           if (!isDigit(ch)) {
-            throw new RuntimeException("non digit in http major");
+            settings.call_on_error(this, "non digit in http major", data, p_err);
           }
           http_major = (int)ch - 0x30;
           state = State.req_http_major;
@@ -858,21 +865,21 @@ public class  HTTPParser {
           }
 
           if (!isDigit(ch)) {
-            throw new RuntimeException("non digit in http major");
+            settings.call_on_error(this, "non digit in http major", data, p_err);
           }
 
           http_major *= 10;
           http_major += (int)ch - 0x30;
 
           if (http_major > 999) {
-            throw new RuntimeException("ridiculous http major");
+            settings.call_on_error(this, "ridiculous http major", data, p_err);
           };
           break;
         
         /* first digit of minor HTTP version */
         case req_first_http_minor:
           if (!isDigit(ch)) {
-            throw new RuntimeException("non digit in http minor");
+            settings.call_on_error(this, "non digit in http minor", data, p_err);
           }
           http_minor = (int)ch - 0x30;
           state = State.req_http_minor;
@@ -892,7 +899,7 @@ public class  HTTPParser {
           /* XXX allow spaces after digit? */
 
           if (!isDigit(ch)) {
-            throw new RuntimeException("non digit in http minor");
+            settings.call_on_error(this, "non digit in http minor", data, p_err);
           }
 
           http_minor *= 10;
@@ -900,7 +907,7 @@ public class  HTTPParser {
 
          
           if (http_major > 999) {
-            throw new RuntimeException("ridiculous http minor");
+            settings.call_on_error(this, "ridiculous http minor", data, p_err);
           };
    
           break;
@@ -909,7 +916,7 @@ public class  HTTPParser {
         case req_line_almost_done:
         {
           if (ch != LF) {
-            throw new RuntimeException("missing LF after request line");
+            settings.call_on_error(this, "missing LF after request line", data, p_err);
           }
           state = State.header_field_start;
           break;
@@ -938,7 +945,7 @@ public class  HTTPParser {
           c = upper(ch);
 
           if (c < A || Z < c) {
-            throw new RuntimeException("invalid char in header");
+            settings.call_on_error(this, "invalid char in header", data, p_err);
           };
 
           header_field_mark = p;
@@ -1069,7 +1076,7 @@ public class  HTTPParser {
                 break;
 
               default:
-                throw new RuntimeException("Unknown Header State");
+                settings.call_on_error(this, "Unknown Header State", data, p_err);
             } // switch: header_state
             break;
           } // 0 != c
@@ -1098,7 +1105,7 @@ public class  HTTPParser {
             break;
           }
 
-          throw new RuntimeException("invalid header field");
+          settings.call_on_error(this, "invalid header field", data, p_err);
         }
 
 
@@ -1153,7 +1160,7 @@ public class  HTTPParser {
 
             case content_length:
               if (!isDigit(ch)) {
-                throw new RuntimeException("Content-Length not numeric");
+                settings.call_on_error(this, "Content-Length not numeric", data, p_err);
               } 
               content_length = (int)ch - 0x30;
               break;
@@ -1207,11 +1214,11 @@ public class  HTTPParser {
 
             case connection:
             case transfer_encoding:
-              throw new RuntimeException("Shouldn't be here");
+              settings.call_on_error(this, "Shouldn't be here", data, p_err);
 
             case content_length:
               if (!isDigit(ch)) {
-                throw new RuntimeException("Content-Length not numeric");
+                settings.call_on_error(this, "Content-Length not numeric", data, p_err);
               } 
 
               content_length *= 10;
@@ -1308,12 +1315,12 @@ public class  HTTPParser {
         /******************* Chunk *******************/
         case chunk_size_start:
           if (0 == (flags & F_CHUNKED)) {
-            throw new RuntimeException("not chunked");
+            settings.call_on_error(this, "not chunked", data, p_err);
           }
 
           c = UNHEX[ch];
           if (c == -1) {
-            throw new RuntimeException("invalid hex char in chunk content length");
+            settings.call_on_error(this, "invalid hex char in chunk content length", data, p_err);
           }
           content_length = c;
           state = State.chunk_size;
@@ -1323,7 +1330,7 @@ public class  HTTPParser {
 
         case chunk_size:
           if (0 == (flags & F_CHUNKED)) {
-            throw new RuntimeException("not chunked");
+            settings.call_on_error(this, "not chunked", data, p_err);
           }
 
           if (CR == ch) {
@@ -1338,7 +1345,7 @@ public class  HTTPParser {
               state = State.chunk_parameters;
               break;
             }
-            throw new RuntimeException("invalid char in chunk length");
+            settings.call_on_error(this, "invalid hex char in chunk content length", data, p_err);
           }
 
           content_length *= 16;
@@ -1349,7 +1356,7 @@ public class  HTTPParser {
 
         case chunk_parameters:
           if (0 == (flags & F_CHUNKED)) {
-            throw new RuntimeException("not chunked");
+            settings.call_on_error(this, "not chunked", data, p_err);
           }
           /* just ignore this shit. TODO check for overflow */
           if (CR == ch) {
@@ -1362,10 +1369,10 @@ public class  HTTPParser {
 
         case chunk_size_almost_done:
           if (0 == (flags & F_CHUNKED)) {
-            throw new RuntimeException("not chunked");
+            settings.call_on_error(this, "not chunked", data, p_err);
           }
           if (strict && LF != ch) {
-            throw new RuntimeException("expected LF at end of chunk size");
+            settings.call_on_error(this, "expected LF at end of chunk size", data, p_err);
           }
 
           if (0 == content_length) {
@@ -1381,7 +1388,7 @@ public class  HTTPParser {
         case chunk_data:
         {
           if (0 == (flags & F_CHUNKED)) {
-            throw new RuntimeException("not chunked");
+            settings.call_on_error(this, "not chunked", data, p_err);
           }
 
           to_read = min(pe-p, content_length);
@@ -1402,10 +1409,10 @@ public class  HTTPParser {
 
         case chunk_data_almost_done:
           if (0 == (flags & F_CHUNKED)) {
-            throw new RuntimeException("not chunked");
+            settings.call_on_error(this, "not chunked", data, p_err);
           }
           if (strict && CR != ch) {
-            throw new RuntimeException("chunk data terminated invcorrectly, expected CR");
+            settings.call_on_error(this, "chunk data terminated incorrectly, expected CR", data, p_err);
           }
           state = State.chunk_data_done;
           break;
@@ -1414,10 +1421,10 @@ public class  HTTPParser {
 
         case chunk_data_done:
           if (0 == (flags & F_CHUNKED)) {
-            throw new RuntimeException("not chunked");
+            settings.call_on_error(this, "not chunked", data, p_err);
           }
           if (strict && LF != ch) {
-            throw new RuntimeException("chunk data terminated invcorrectly, expected LF");
+            settings.call_on_error(this, "chunk data terminated incorrectly, expected LF", data, p_err);
           }
           state = State.chunk_size_start;
           break;
@@ -1426,7 +1433,7 @@ public class  HTTPParser {
         
         
         default:
-          throw new RuntimeException("unhandled state");
+          settings.call_on_error(this, "unhandled state", data, p_err);
           
       } // switch
     } // while
@@ -1527,26 +1534,25 @@ public class  HTTPParser {
   }
 	
 
-  void start_req_method_assign(byte c){
+  HTTPMethod start_req_method_assign(byte c){
     switch (c) {
-      case C: method = HTTPMethod.HTTP_CONNECT; break; /* or COPY */
-      case D: method = HTTPMethod.HTTP_DELETE;  break;
-      case G: method = HTTPMethod.HTTP_GET;     break;
-      case H: method = HTTPMethod.HTTP_HEAD;    break;
-      case L: method = HTTPMethod.HTTP_LOCK;    break;
-      case M: method = HTTPMethod.HTTP_MKCOL;   break; /* or MOVE */
-      case O: method = HTTPMethod.HTTP_OPTIONS; break;
-      case P: method = HTTPMethod.HTTP_POST;    break; /* or PROPFIND, PROPPATH, PUT */
-      case T: method = HTTPMethod.HTTP_TRACE;   break;
-      case U: method = HTTPMethod.HTTP_UNLOCK;  break;
-      default:
-              throw new RuntimeException("Invalid Method: "+c);
+      case C: return HTTPMethod.HTTP_CONNECT;  /* or COPY */
+      case D: return HTTPMethod.HTTP_DELETE;  
+      case G: return HTTPMethod.HTTP_GET;     
+      case H: return HTTPMethod.HTTP_HEAD;    
+      case L: return HTTPMethod.HTTP_LOCK;    
+      case M: return HTTPMethod.HTTP_MKCOL;    /* or MOVE */
+      case O: return HTTPMethod.HTTP_OPTIONS; 
+      case P: return HTTPMethod.HTTP_POST;     /* or PROPFIND, PROPPATH, PUT */
+      case T: return HTTPMethod.HTTP_TRACE;   
+      case U: return HTTPMethod.HTTP_UNLOCK;  
     }
+    return null; // ugh.
   }
 
   void header_almost_done(byte ch) {
     if (strict && LF != ch) {
-      throw new RuntimeException("incorrect header ending, expection LF");
+      throw new HTTPException("incorrect header ending, expection LF");
     }
 
     state = State.header_field_start;
@@ -1569,7 +1575,7 @@ public class  HTTPParser {
   void headers_almost_done (byte ch, ParserSettings settings) {
 
     if (LF != ch) {
-      throw new RuntimeException("header not properly completed");
+      throw new HTTPException("header not properly completed");
     }
 
     if (0 != (flags & F_TRAILING)) {
