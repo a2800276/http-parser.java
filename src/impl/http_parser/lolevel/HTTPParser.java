@@ -1202,7 +1202,9 @@ public class  HTTPParser {
               settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
               header_value_mark = -1;
               
-              header_almost_done(ch);
+              if (!header_almost_done(ch)) {
+                settings.call_on_error(this,"incorrect header ending, expection LF", data, p_err);
+              }
               break;
             }
             break;
@@ -1272,7 +1274,9 @@ public class  HTTPParser {
 
 
         case header_almost_done:
-          header_almost_done(ch);
+          if (!header_almost_done(ch)) {
+            settings.call_on_error(this,"incorrect header ending, expection LF", data, p_err);
+          }
           break;
 
         case headers_almost_done:
@@ -1550,9 +1554,9 @@ public class  HTTPParser {
     return null; // ugh.
   }
 
-  void header_almost_done(byte ch) {
+  boolean header_almost_done(byte ch) {
     if (strict && LF != ch) {
-      throw new HTTPException("incorrect header ending, expection LF");
+      return false;
     }
 
     state = State.header_field_start;
@@ -1570,6 +1574,7 @@ public class  HTTPParser {
       default:
         break;
     }
+    return true;
   }
 
   void headers_almost_done (byte ch, ParserSettings settings) {
