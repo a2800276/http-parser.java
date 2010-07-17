@@ -27,6 +27,7 @@ import java.util.regex.*;
 import java.nio.ByteBuffer;
 
 import http_parser.HTTPMethod;
+import http_parser.ParserType;
 
 public class TestLoaderNG {
 	String fn;

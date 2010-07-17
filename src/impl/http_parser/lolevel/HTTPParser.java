@@ -3,6 +3,7 @@ package http_parser.lolevel;
 import java.nio.ByteBuffer;
 import http_parser.HTTPException;
 import http_parser.HTTPMethod;
+import http_parser.ParserType;
 import static http_parser.lolevel.HTTPParser.C.*;
 import static http_parser.lolevel.HTTPParser.State.*;
 
@@ -23,17 +24,17 @@ public class  HTTPParser {
 
 	
   /** READ-ONLY **/
-  int http_major;
-  int http_minor;
-  int status_code;   /* responses only */
-  HTTPMethod method; /* requests only */
+  protected int http_major;
+  protected int http_minor;
+  protected int status_code;   /* responses only */
+  protected HTTPMethod method; /* requests only */
 
   /* true  = Upgrade header was present and the parser has exited because of that.
    * false = No upgrade header present.
    * Should be checked when http_parser_execute() returns in addition to
    * error checking.
    */
-  boolean upgrade; 
+  protected boolean upgrade; 
 
   /** PUBLIC **/
 	// TODO : this is used in c to maintain application state.

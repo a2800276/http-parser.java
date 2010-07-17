@@ -1,4 +1,4 @@
-package http_parser.lolevel;
+package http_parser;
 
 public enum ParserType {
 HTTP_REQUEST, HTTP_RESPONSE, HTTP_BOTH;
