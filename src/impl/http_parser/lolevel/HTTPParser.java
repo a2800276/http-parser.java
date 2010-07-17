@@ -938,7 +938,9 @@ public class  HTTPParser {
             /* they might be just sending \n instead of \r\n so this would be
              * the second \n to denote the end of headers*/
             state = State.headers_almost_done;
-            headers_almost_done(ch, settings);
+            if (!headers_almost_done(ch, settings)) {
+              settings.call_on_error(this, "header not properly completed", data, p_err);
+            }
             break;
           }
 
@@ -1280,7 +1282,9 @@ public class  HTTPParser {
           break;
 
         case headers_almost_done:
-          headers_almost_done(ch, settings);
+          if (!headers_almost_done(ch, settings)) {
+            settings.call_on_error(this, "header not properly completed", data, p_err);
+          }
           break;
 
         /******************* Header *******************/
@@ -1577,10 +1581,10 @@ public class  HTTPParser {
     return true;
   }
 
-  void headers_almost_done (byte ch, ParserSettings settings) {
+  boolean headers_almost_done (byte ch, ParserSettings settings) {
 
     if (LF != ch) {
-      throw new HTTPException("header not properly completed");
+      return false;
     }
 
     if (0 != (flags & F_TRAILING)) {
@@ -1591,7 +1595,7 @@ public class  HTTPParser {
 
       state = new_message(); 
 
-      return;
+      return true;
     }
 
     nread = 0;
@@ -1643,7 +1647,7 @@ public class  HTTPParser {
     // Exit, the rest of the connect is in a different protocol.
     if (0 != (flags & F_UPGRADE)) {
       settings.call_on_message_complete(this);
-      return;
+      return true;
     }
 
     if (0 != (flags & F_SKIPBODY)) {
@@ -1671,7 +1675,7 @@ public class  HTTPParser {
         }
       }
     }
-
+    return true;
   } // headers_almost_fone
 
 

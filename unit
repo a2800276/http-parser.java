@@ -1,1 +1,1 @@
-javac -d classes/ java/*.java  && java -cp classes http_parser.UnitTest
+javac -d classes/ `find src -name '*.java'`  && java -cp classes http_parser.lolevel.UnitTest
