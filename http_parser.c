@@ -22,7 +22,16 @@
  * IN THE SOFTWARE.
  */
 #include <http_parser.h>
+#ifdef _WIN32
+typedef __int8 int8_t;
+typedef unsigned __int8 uint8_t;
+typedef __int16 int16_t;
+typedef unsigned __int16 uint16_t;
+typedef __int16 int32_t;
+typedef unsigned __int32 uint32_t;
+#else
 #include <stdint.h>
+#endif
 #include <assert.h>
 #include <stddef.h>
 
@@ -77,6 +86,29 @@ do {                                                                 \
 #define CLOSE "close"
 
 
+static const char *method_strings[] =
+  { "DELETE"
+  , "GET"
+  , "HEAD"
+  , "POST"
+  , "PUT"
+  , "CONNECT"
+  , "OPTIONS"
+  , "TRACE"
+  , "COPY"
+  , "LOCK"
+  , "MKCOL"
+  , "MOVE"
+  , "PROPFIND"
+  , "PROPPATCH"
+  , "UNLOCK"
+  , "REPORT"
+  , "MKACTIVITY"
+  , "CHECKOUT"
+  , "MERGE"
+  };
+
+
 static const char lowcase[256] =
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
   "\0\0\0\0\0\0\0\0\0\0\0\0\0-\0\0" "0123456789\0\0\0\0\0\0"
@@ -125,7 +157,7 @@ static const uint32_t  usual[] = {
 enum state
   { s_dead = 1 /* important that this is > 0 */
 
-  , s_start_res_or_resp
+  , s_start_req_or_res
   , s_res_or_resp_H
   , s_start_res
   , s_res_H
@@ -292,6 +324,7 @@ size_t http_parser_execute (http_parser *parser,
   if (state == s_req_path || state == s_req_schema || state == s_req_schema_slash
       || state == s_req_schema_slash_slash || state == s_req_port
       || state == s_req_query_string_start || state == s_req_query_string
+      || state == s_req_host
       || state == s_req_fragment_start || state == s_req_fragment)
     url_mark = data;
 
@@ -312,7 +345,7 @@ size_t http_parser_execute (http_parser *parser,
          */
         goto error;
 
-      case s_start_res_or_resp:
+      case s_start_req_or_res:
       {
         if (ch == CR || ch == LF)
           break;
@@ -505,14 +538,15 @@ size_t http_parser_execute (http_parser *parser,
         parser->method = (enum http_method) 0;
         index = 1;
         switch (ch) {
-          case 'C': parser->method = HTTP_CONNECT; /* or COPY */ break;
+          case 'C': parser->method = HTTP_CONNECT; /* or COPY, CHECKOUT */ break;
           case 'D': parser->method = HTTP_DELETE; break;
           case 'G': parser->method = HTTP_GET; break;
           case 'H': parser->method = HTTP_HEAD; break;
           case 'L': parser->method = HTTP_LOCK; break;
-          case 'M': parser->method = HTTP_MKCOL; /* or MOVE */ break;
+          case 'M': parser->method = HTTP_MKCOL; /* or MOVE, MKACTIVITY, MERGE */ break;
           case 'O': parser->method = HTTP_OPTIONS; break;
           case 'P': parser->method = HTTP_POST; /* or PROPFIND or PROPPATCH or PUT */ break;
+          case 'R': parser->method = HTTP_REPORT; break;
           case 'T': parser->method = HTTP_TRACE; break;
           case 'U': parser->method = HTTP_UNLOCK; break;
           default: goto error;
@@ -526,40 +560,34 @@ size_t http_parser_execute (http_parser *parser,
         if (ch == '\0')
           goto error;
 
-        static const char *match_strs[] = {
-          "DELETE",
-          "GET",
-          "HEAD",
-          "POST",
-          "PUT",
-          "CONNECT",
-          "OPTIONS",
-          "TRACE",
-          "COPY",
-          "LOCK",
-          "MKCOL",
-          "MOVE",
-          "PROPFIND",
-          "PROPPATCH",
-          "UNLOCK" };
-
-        const char *matcher = match_strs[parser->method];
-        if (ch == ' ' && matcher[index] == '\0')
+        const char *matcher = method_strings[parser->method];
+        if (ch == ' ' && matcher[index] == '\0') {
           state = s_req_spaces_before_url;
-        else if (ch == matcher[index])
+        } else if (ch == matcher[index]) {
           ; // nada
-        else if (index == 2 && parser->method == HTTP_CONNECT && ch == 'P')
-          parser->method = HTTP_COPY;
-        else if (index == 1 && parser->method == HTTP_MKCOL && ch == 'O')
-          parser->method = HTTP_MOVE;
-        else if (index == 1 && parser->method == HTTP_POST && ch == 'R')
+        } else if (parser->method == HTTP_CONNECT) {
+          if (index == 1 && ch == 'H') {
+            parser->method = HTTP_CHECKOUT;
+          } else if (index == 2  && ch == 'P') {
+            parser->method = HTTP_COPY;
+          }
+        } else if (parser->method == HTTP_MKCOL) {
+          if (index == 1 && ch == 'O') {
+            parser->method = HTTP_MOVE;
+          } else if (index == 1 && ch == 'E') {
+            parser->method = HTTP_MERGE;
+          } else if (index == 2 && ch == 'A') {
+            parser->method = HTTP_MKACTIVITY;
+          }
+        } else if (index == 1 && parser->method == HTTP_POST && ch == 'R') {
           parser->method = HTTP_PROPFIND; /* or HTTP_PROPPATCH */
-        else if (index == 1 && parser->method == HTTP_POST && ch == 'U')
+        } else if (index == 1 && parser->method == HTTP_POST && ch == 'U') {
           parser->method = HTTP_PUT;
-        else if (index == 4 && parser->method == HTTP_PROPFIND && ch == 'P')
+        } else if (index == 4 && parser->method == HTTP_PROPFIND && ch == 'P') {
           parser->method = HTTP_PROPPATCH;
-        else
+        } else {
           goto error;
+        }
 
         ++index;
         break;
@@ -1288,7 +1316,7 @@ size_t http_parser_execute (http_parser *parser,
 
         nread = 0;
 
-        if (parser->flags & F_UPGRADE) parser->upgrade = 1;
+        if (parser->flags & F_UPGRADE || parser->method == HTTP_CONNECT) parser->upgrade = 1;
 
         /* Here we call the headers_complete callback. This is somewhat
          * different than other callbacks because if the user returns 1, we
@@ -1311,7 +1339,7 @@ size_t http_parser_execute (http_parser *parser,
         }
 
         // Exit, the rest of the connect is in a different protocol.
-        if (parser->flags & F_UPGRADE) {
+        if (parser->flags & F_UPGRADE || parser->method == HTTP_CONNECT) {
           CALLBACK2(message_complete);
           return (p - data);
         }
@@ -1504,12 +1532,18 @@ http_should_keep_alive (http_parser *parser)
 }
 
 
+const char * http_method_str (enum http_method m)
+{
+  return method_strings[m];
+}
+
+
 void
 http_parser_init (http_parser *parser, enum http_parser_type t)
 {
   parser->type = t;
-  parser->state = (t == HTTP_REQUEST ? s_start_req : (t == HTTP_RESPONSE ? s_start_res : s_start_res_or_resp));
+  parser->state = (t == HTTP_REQUEST ? s_start_req : (t == HTTP_RESPONSE ? s_start_res : s_start_req_or_res));
   parser->nread = 0;
   parser->upgrade = 0;
+  parser->flags = 0;
 }
-

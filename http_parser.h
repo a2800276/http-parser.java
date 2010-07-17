@@ -27,6 +27,10 @@ extern "C" {
 
 #include <sys/types.h>
 
+#ifdef _WIN32
+typedef unsigned int size_t;
+typedef int ssize_t;
+#endif
 
 /* Compile with -DHTTP_PARSER_STRICT=0 to make less checks, but run
  * faster
@@ -82,6 +86,11 @@ enum http_method
   , HTTP_PROPFIND
   , HTTP_PROPPATCH
   , HTTP_UNLOCK
+  /* subversion */
+  , HTTP_REPORT
+  , HTTP_MKACTIVITY
+  , HTTP_CHECKOUT
+  , HTTP_MERGE
   };
 
 
@@ -149,6 +158,8 @@ size_t http_parser_execute(http_parser *parser,
  */
 int http_should_keep_alive(http_parser *parser);
 
+/* Returns a string version of the HTTP method. */
+const char *http_method_str(enum http_method);
 
 #ifdef __cplusplus
 }
