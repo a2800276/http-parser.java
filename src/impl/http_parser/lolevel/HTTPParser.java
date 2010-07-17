@@ -88,84 +88,6 @@ public class  HTTPParser {
    */
 	static void p(Object o) {System.out.println(o);}
 
-  void error (String mes, ByteBuffer b, int begining) {
-      // the error message should look like this:
-      //
-      // Bla expected something, but it's not there (mes)
-      // GEt / HTTP 1_1
-      // ............^.
-      //
-      // |----------------- 72 -------------------------|
-
-      // This is ridiculously complicated and probably riddled with
-      // off-by-one errors, should be moved into high level interface.
-      // TODO.
-      
-      // also: need to keep track of the initial buffer position in
-      // execute so that we don't screw up any `mark()` that may have
-      // been set outside of our control to be nice.
-
-      final int mes_width = 72;
-      int p   = b.position();      // error position
-      int end = b.limit();         // this is the end
-      int m   = end - begining;    // max mes length  
-      
-      StringBuilder builder = new StringBuilder();
-      int p_adj = p;
-
-      byte [] orig = new byte[0];
-      if (m <= mes_width) {
-        orig = new byte[m];
-        b.position(begining);
-        b.get(orig, 0, m);
-        p_adj = p-begining;
-        
-        
-      } else {
-        // we'll need to trim bit off the beginning and/or end
-        orig = new byte[mes_width];
-        // three possibilities:
-        // a.) plenty of stuff around p
-        // b.) plenty of stuff in front of p
-        // c.) plenty of stuff behind p
-        // CAN'T be not enough stuff aorund p in total, because 
-        // m>meswidth (see if to this else)
-
-        int before = p-begining;
-        int after  = end - p;
-        if ( (before > mes_width/2) && (after > mes_width/2)) {
-          // plenty of stuff in front of and behind error
-          p_adj = mes_width/2;
-          b.position(p - mes_width/2);
-          b.get(orig, 0, mes_width);
-        } else if  (before <= mes_width/2) {
-          // take all of the begining.
-          b.position(begining);
-          // and as much of the rest as possible
-          
-          b.get(orig, 0, mes_width);
-
-        } else {
-          // plenty of stuff before
-          before = end-mes_width;
-          b.position(before);
-          p_adj = p - before;
-          b.get(orig, 0, mes_width);
-        }
-      }
-
-      builder.append(new String(orig));
-      builder.append("\n");
-      for (int i = 0; i!= p_adj; ++i) {
-        builder.append(".");
-      }
-      builder.append("^");
-
-
-      b.position(p); // restore position
-      throw new HTTPException(builder.toString());
-
-  }
 
   /** Execute the parser with the currently available data contained in
    * the buffer. The buffers position() and limit() need to be set
@@ -906,7 +828,7 @@ public class  HTTPParser {
           http_minor += (int)ch - 0x30;
 
          
-          if (http_major > 999) {
+          if (http_minor > 999) {
             settings.call_on_error(this, "ridiculous http minor", data, p_err);
           };
    
