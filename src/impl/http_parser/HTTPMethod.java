@@ -19,8 +19,12 @@ public enum HTTPMethod {
   , HTTP_MOVE("MOVE")
   , HTTP_PROPFIND("PROPFIND")
   , HTTP_PROPPATCH("PROPPATCH")
-  , HTTP_UNLOCK("UNLOCK");
-	
+  , HTTP_UNLOCK("UNLOCK")
+  , HTTP_REPORT("REPORT")
+  , HTTP_MKACTIVITY("MKACTIVITY")
+  , HTTP_CHECKOUT("CHECKOUT")
+  , HTTP_MERGE("MERGE");
+
 	private static Charset ASCII;
 	static {
 		ASCII = Charset.forName("US-ASCII");;
@@ -67,6 +71,15 @@ public enum HTTPMethod {
 		else if ("PROPPATCH".equalsIgnoreCase(s))    {return HTTP_PROPPATCH;}
 		else if ("HTTP_UNLOCK".equalsIgnoreCase(s))  {return HTTP_UNLOCK;}
 		else if ("UNLOCK".equalsIgnoreCase(s))       {return HTTP_UNLOCK;}
+    else if ("HTTP_REPORT".equalsIgnoreCase(s)) {return HTTP_REPORT;}
+    else if ("REPORT".equalsIgnoreCase(s)){return HTTP_REPORT;}
+    else if ("HTTP_MKACTIVITY".equalsIgnoreCase(s)) {return HTTP_MKACTIVITY;}
+    else if ("MKACTIVITY".equalsIgnoreCase(s)){return HTTP_MKACTIVITY;}
+    else if ("HTTP_CHECKOUT".equalsIgnoreCase(s)) {return HTTP_CHECKOUT;}
+    else if ("CHECKOUT".equalsIgnoreCase(s)){return HTTP_CHECKOUT;}
+    else if ("HTTP_MERGE".equalsIgnoreCase(s)) {return HTTP_MERGE;}
+    else if ("MERGE".equalsIgnoreCase(s)){return HTTP_MERGE;}
+
 	  else                                         {return null;}
 	}	
 	void init (String name) {

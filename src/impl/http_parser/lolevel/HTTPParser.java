@@ -77,7 +77,7 @@ public class  HTTPParser {
 				this.state = State.start_res;
 				break;
 			case HTTP_BOTH:
-				this.state = State.start_res_or_resp;
+				this.state = State.start_res_or_res;
 				break;
 			default:
 				throw new HTTPException("can't happen, invalid ParserType enum");
@@ -171,7 +171,7 @@ public class  HTTPParser {
 
 
 
-        case start_res_or_resp:
+        case start_res_or_res:
           if (CR == ch || LF == ch){
             break;
           }
@@ -399,10 +399,20 @@ public class  HTTPParser {
             state = State.req_spaces_before_url;
           } else if (arr[index] == ch) {
             // wuhu!
-          } else if (2 == index && HTTPMethod.HTTP_CONNECT  == method && P == ch) {
-            method = HTTPMethod.HTTP_COPY;
-          } else if (1 == index && HTTPMethod.HTTP_MKCOL    == method && O == ch) {
-            method = HTTPMethod.HTTP_MOVE;
+          } else if (HTTPMethod.HTTP_CONNECT == method) {
+              if (1 == index && H == ch) {
+                method = HTTPMethod.HTTP_CHECKOUT;
+              } else if (2 == index && P == ch) {
+                method = HTTPMethod.HTTP_COPY;
+              }
+          } else if (HTTPMethod.HTTP_MKCOL == method) {
+              if        (1 == index && O == ch) {
+                method = HTTPMethod.HTTP_MOVE;
+              } else if (1 == index && E == ch) {
+                method = HTTPMethod.HTTP_MERGE;
+              } else if (2 == index && A == ch) {
+                method = HTTPMethod.HTTP_MKACTIVITY;
+              }
           } else if (1 == index && HTTPMethod.HTTP_POST     == method && R == ch) {
             method = HTTPMethod.HTTP_PROPFIND;
           } else if (1 == index && HTTPMethod.HTTP_POST     == method && U == ch) {
@@ -1467,14 +1477,15 @@ public class  HTTPParser {
 
   HTTPMethod start_req_method_assign(byte c){
     switch (c) {
-      case C: return HTTPMethod.HTTP_CONNECT;  /* or COPY */
+      case C: return HTTPMethod.HTTP_CONNECT;  /* or COPY, CHECKOUT */
       case D: return HTTPMethod.HTTP_DELETE;  
       case G: return HTTPMethod.HTTP_GET;     
       case H: return HTTPMethod.HTTP_HEAD;    
       case L: return HTTPMethod.HTTP_LOCK;    
-      case M: return HTTPMethod.HTTP_MKCOL;    /* or MOVE */
+      case M: return HTTPMethod.HTTP_MKCOL;    /* or MOVE, MKACTIVITY, MERGE */
       case O: return HTTPMethod.HTTP_OPTIONS; 
       case P: return HTTPMethod.HTTP_POST;     /* or PROPFIND, PROPPATH, PUT */
+      case R: return HTTPMethod.HTTP_REPORT;
       case T: return HTTPMethod.HTTP_TRACE;   
       case U: return HTTPMethod.HTTP_UNLOCK;  
     }
@@ -1523,7 +1534,7 @@ public class  HTTPParser {
 
     nread = 0;
 
-    if (0 != (flags & F_UPGRADE)) upgrade = true;
+    if (0 != (flags & F_UPGRADE) || HTTPMethod.HTTP_CONNECT == method) upgrade = true;
 
     /* Here we call the headers_complete callback. This is somewhat
      * different than other callbacks because if the user returns 1, we
@@ -1568,7 +1579,7 @@ public class  HTTPParser {
 
 
     // Exit, the rest of the connect is in a different protocol.
-    if (0 != (flags & F_UPGRADE)) {
+    if (upgrade) {
       settings.call_on_message_complete(this);
       return true;
     }
@@ -1747,7 +1758,7 @@ public class  HTTPParser {
 
     dead               
 
-    , start_res_or_resp
+    , start_res_or_res
     , res_or_resp_H
     , start_res
     , res_H
