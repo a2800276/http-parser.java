@@ -7,7 +7,7 @@ request_path:/test
 request_url :/test
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "User-Agent": "curl/7.18.0 (i486-pc-linux-gnu) libcurl/7.18.0 OpenSSL/0.9.8g zlib/1.2.3.3 libidn/1.1"}
 header_1 :{ "Host": "0.0.0.0=5000"}
@@ -26,7 +26,7 @@ request_path:/favicon.ico
 request_url :/favicon.ico
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Host": "0.0.0.0=5000"}
 header_1 :{ "User-Agent": "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9) Gecko/2008061015 Firefox/3.0"}
@@ -50,7 +50,7 @@ request_path:/dumbfuck
 request_url :/dumbfuck
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "aaaaaaaaaaaaa": "++++++++++"}
 should_keep_alive         :1
@@ -67,7 +67,7 @@ request_path:/forums/1/topics/2375
 request_url :/forums/1/topics/2375?page=1#posts-17408
 fragment    :posts-17408
 query_string:page=1
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -83,7 +83,7 @@ request_path:/get_no_headers_no_body/world
 request_url :/get_no_headers_no_body/world
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -99,7 +99,7 @@ request_path:/get_one_header_no_body
 request_url :/get_one_header_no_body
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Accept": "*/*"}
 should_keep_alive         :1
@@ -222,7 +222,7 @@ request_path:/with_"stupid"_quotes
 request_url :/with_"stupid"_quotes?foo="bar"
 fragment    :
 query_string:foo="bar"
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -238,7 +238,7 @@ request_path:/test
 request_url :/test
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Host": "0.0.0.0:5000"}
 header_1 :{ "User-Agent": "ApacheBench/2.3"}
@@ -257,7 +257,7 @@ request_path:/test.cgi
 request_url :/test.cgi?foo=bar?baz
 fragment    :
 query_string:foo=bar?baz
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -273,7 +273,7 @@ request_path:/test
 request_url :/test
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -289,7 +289,7 @@ request_path:/demo
 request_url :/demo
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Host": "example.com"}
 header_1 :{ "Connection": "Upgrade"}
@@ -312,14 +312,30 @@ request_path:
 request_url :home.netscape.com:443
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "User-agent": "Mozilla/1.1N"}
 header_1 :{ "Proxy-authorization": "basic aGVsbG86d29ybGQ="}
 should_keep_alive         :0
-upgrade                   :0
+upgrade                   :1
 http_major                :1
 http_minor                :0
+
+name  :report request
+raw   :"REPORT /test HTTP/1.1\r\n\r\n"
+type  :HTTP_REQUEST
+method: REPORT
+status_code :0
+request_path:/test
+request_url :/test
+fragment    :
+query_string:
+body        :""
+body_size   :0
+should_keep_alive         :1
+upgrade                   :0
+http_major                :1
+http_minor                :1
 
 name  :google 301
 raw   :"HTTP/1.1 301 Moved Permanently\r\nLocation: http://www.google.com/\r\nContent-Type: text/html; charset=UTF-8\r\nDate: Sun, 26 Apr 2009 11:11:49 GMT\r\nExpires: Tue, 26 May 2009 11:11:49 GMT\r\nCache-Control: public, max-age=2592000\r\nServer: gws\r\nContent-Length: 219\r\n\r\n<HTML><HEAD><meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\">\n<TITLE>301 Moved</TITLE></HEAD><BODY>\n<H1>301 Moved</H1>\nThe document has moved\n<A HREF=\"http://www.google.com/\">here</A>.\r\n</BODY></HTML>\r\n"
@@ -374,7 +390,7 @@ request_path:
 request_url :
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -390,7 +406,7 @@ request_path:
 request_url :
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -462,7 +478,7 @@ request_path:
 request_url :
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Server": "DCLK-AdSvr"}
 header_1 :{ "Content-Type": "text/xml"}
@@ -482,7 +498,7 @@ request_path:
 request_url :
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Date": "Thu, 03 Jun 2010 09:56:32 GMT"}
 header_1 :{ "Server": "Apache/2.2.3 (Red Hat)"}

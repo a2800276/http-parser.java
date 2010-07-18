@@ -1503,14 +1503,124 @@ create_large_chunked_message (int body_size_in_kb, const char* headers)
   return buf;
 }
 
+char * 
+quote(const char * orig) {
+	size_t j, i, len = strlen(orig);
+	char * quoted = malloc(len*2); // hm..
+	bzero(quoted, len*2);
+	for (i=0, j=0; i!=len; ++i) {
+		switch (orig[i]){
+			case '\n':
+				quoted[j++] = '\\';
+				quoted[j++] = 'n';
+				break;
+			case '\r':
+				quoted[j++] = '\\';
+				quoted[j++] = 'r';
+				break;
+			case '"':
+				quoted[j++] = '\\';
+				quoted[j++] = '"';
+				break;
+			default  :
+				quoted[j++] = orig[i];
+		}
+	}
+	return quoted;
+}
+
+void 
+dump_message(const struct message * m)
+{
+	int i;
+	printf("name  :%s\n", m->name);	
+	char * bla = quote(m->raw);
+	printf("raw   :\"%s\"\n", bla);
+	free(bla);
+	switch (m->type){
+		case HTTP_REQUEST:
+			printf("type  :HTTP_REQUEST\n");break;
+		case HTTP_RESPONSE:
+			printf("type  :HTTP_RESPONSE\n"); break;
+		case HTTP_BOTH:
+			printf("type  :HTTP_BOTH\n");
+	}
+	switch (m->method) {
+    case HTTP_DELETE:     printf("method: HTTP_DELETE\n");break;
+    case HTTP_GET:        printf("method: HTTP_GET\n");break;
+    case HTTP_HEAD:       printf("method: HTTP_HEAD\n");break;
+    case HTTP_POST:       printf("method: HTTP_POST\n");break;
+    case HTTP_PUT:        printf("method: HTTP_PUT\n");break;
+    case HTTP_CONNECT:    printf("method: HTTP_CONNECT\n");break;
+    case HTTP_OPTIONS:    printf("method: HTTP_OPTIONS\n");break;
+    case HTTP_TRACE:      printf("method: HTTP_TRACE\n");break;
+    case HTTP_COPY:       printf("method: HTTP_COPY\n");break;
+    case HTTP_LOCK:       printf("method: HTTP_LOCK\n");break;
+    case HTTP_MKCOL:      printf("method: HTTP_MKCOL\n");break;
+    case HTTP_MOVE:       printf("method: HTTP_MOVE\n");break;
+    case HTTP_PROPFIND:   printf("method: HTTP_PROPFIND\n");break;
+    case HTTP_PROPPATCH:  printf("method: HTTP_PROPPATCH\n");break;
+    case HTTP_UNLOCK:     printf("method: HTTP_UNLOCK\n");break;
+    /* subversion */
+    case HTTP_REPORT:     printf("method: REPORT\n"); break;
+    case HTTP_MKACTIVITY: printf("method: MKACTIVITY\n"); break;
+    case HTTP_CHECKOUT:   printf("method: CHECKOUT\n"); break;
+    case HTTP_MERGE:      printf("method: MERGE\n"); break;
+		default:
+			break;
+	}
+	printf("status_code :%d\n", m->status_code);
+  printf("request_path:%s\n", m->request_path);
+  printf("request_url :%s\n", m->request_url);
+  printf("fragment    :%s\n", m->fragment);
+  printf("query_string:%s\n", m->query_string);
+
+	bla = quote(m->body);
+  printf("body        :\"%s\"\n", bla);
+	free(bla);
+  printf("body_size   :%zu\n", m->body_size);
+
+	for (i=0; i!=m->num_headers; ++i){
+		printf("header_%d :{ \"%s\": \"%s\"}\n", i, m->headers[i][0], m->headers[i][1]);
+	}
+
+  printf("should_keep_alive         :%d\n", m->should_keep_alive);
+  printf("upgrade                   :%d\n", m->upgrade);
+  printf("http_major                :%d\n", m->http_major);
+  printf("http_minor                :%d\n", m->http_minor);
+//  printf("message_begin_cb_called   :%d\n", m->message_begin_cb_called);
+//  printf("headers_complete_cb_called:%d\n", m->headers_complete_cb_called);
+//  printf("message_complete_cb_called:%d\n", m->message_complete_cb_called);
+//  printf("message_complete_on_eof   :%d\n", m->message_complete_on_eof);
+	printf("\n");
+}
+
+void 
+dump_messages(void) 
+{
+  int request_count;
+  for (request_count = 0; requests[request_count].name; request_count++){
+    dump_message(&requests[request_count]);
+  }
+  for (request_count = 0; responses[request_count].name; request_count++){
+    dump_message(&responses[request_count]);
+  }
+}
 
 int
-main (void)
+main (int argc, char * argv[])
 {
   parser = NULL;
   int i, j, k;
   int request_count;
   int response_count;
+  
+  if (1 != argc) {
+    if (0 == (strncmp("-dump", argv[1], sizeof("-dump")))) {
+      dump_messages();
+      exit(0);
+    }
+  }
 
   printf("sizeof(http_parser) = %u\n", (unsigned int)sizeof(http_parser));
 
