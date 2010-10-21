@@ -6,3 +6,4 @@ test_g
 *.class
 TAGS
 a.out
+.DS_Store
