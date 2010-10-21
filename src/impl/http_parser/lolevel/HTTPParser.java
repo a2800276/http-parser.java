@@ -521,7 +521,7 @@ public class  HTTPParser {
           break;
       
         case req_path:
-          if (usual(ch)) break;
+          if (normal_url_char[ch]) break;
           switch (ch) {
             case SPACE:
               settings.call_on_url(this,data,url_mark, p-url_mark);
@@ -575,7 +575,7 @@ public class  HTTPParser {
           break;
       
         case req_query_string_start:
-          if (usual(ch)) {
+          if (normal_url_char[ch]) {
             query_string_mark = p;
             state = State.req_query_string;
             break;
@@ -609,7 +609,7 @@ public class  HTTPParser {
           break;
         
         case req_query_string:
-          if (usual(ch)) {
+          if (normal_url_char[ch]) {
             break;
           }
 
@@ -656,7 +656,7 @@ public class  HTTPParser {
           break;
 
         case req_fragment_start:
-          if (usual(ch)) {
+          if (normal_url_char[ch]) {
             fragment_mark = p;
             state = State.req_fragment;
             break;
@@ -695,7 +695,7 @@ public class  HTTPParser {
           break;
 
         case req_fragment:
-          if (usual(ch)) {
+          if (normal_url_char[ch]) {
             break;
           }
 
@@ -916,8 +916,7 @@ public class  HTTPParser {
 
         case header_field:
         {
-          c = UPCASE[ch];
-
+          c = (byte) acceptable_header[ch];
           if (0 != c) {  
             switch (header_state) {
               case general:
@@ -1054,7 +1053,7 @@ public class  HTTPParser {
           state = State.header_value;
           index = 0;
 
-          c = UPCASE[ch];
+          c = (byte)acceptable_header[ch];
 
           if (c == 0) {
             if (CR == ch) {
@@ -1123,7 +1122,8 @@ public class  HTTPParser {
 
         case header_value:
         {
-          c = UPCASE[ch];
+          c = (byte)acceptable_header[ch];
+
           if (c == 0) {
             if (CR == ch) {
               settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
@@ -1154,6 +1154,9 @@ public class  HTTPParser {
               settings.call_on_error(this, "Shouldn't be here", data, p_err);
 
             case content_length:
+              if (SPACE == ch) {
+                break;
+              }
               if (!isDigit(ch)) {
                 settings.call_on_error(this, "Content-Length not numeric", data, p_err);
               } 
@@ -1430,40 +1433,6 @@ public class  HTTPParser {
     return (c>= 0x61 /*a*/ && c <=  0x7a /*z*/);
   }
 
-  boolean usual(byte b) {
-
-    //static const uint32_t  usual[] = {
-    //    0xffffdbfe, /* 1111 1111 1111 1111  1101 1011 1111 1110 */
-    //
-    //                /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-    //    0x7ffffff6, /* 0111 1111 1111 1111  1111 1111 1111 0110 */
-    //
-    //                /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
-    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    //
-    //                /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
-    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    //
-    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    //    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    //    0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    //};
-    //
-    //#define USUAL(c) (usual[c >> 5] & (1 << (c & 0x1f)))
-
-    switch (b) {
-      case NULL:
-      case CR:
-      case LF:
-      case SPACE:
-      case QMARK:
-      case HASH:
-        return false;
-    }
-    return true;
-
-  }
 
   byte lower (byte b) {
     return (byte)(b|0x20);
@@ -1534,7 +1503,10 @@ public class  HTTPParser {
 
     nread = 0;
 
-    if (0 != (flags & F_UPGRADE) || HTTPMethod.HTTP_CONNECT == method) upgrade = true;
+    if (0 != (flags & F_UPGRADE) || HTTPMethod.HTTP_CONNECT == method) {
+      upgrade = true;
+    }
+    
 
     /* Here we call the headers_complete callback. This is somewhat
      * different than other callbacks because if the user returns 1, we
@@ -1704,6 +1676,44 @@ public class  HTTPParser {
     static final byte [] CLOSE = {
       0x43, 0x4c, 0x4f, 0x53, 0x45, 
     };
+    /* 
+     * ' ', '_', '-' and all alpha-numeric ascii characters are accepted by acceptable_header.
+     * The 'A'-'Z' are upper-cased.  
+    */
+    
+    static final char [] acceptable_header = {
+/*   0 nul    1 soh    2 stx    3 etx    4 eot    5 enq    6 ack    7 bel  */
+        0,       0,       0,       0,       0,       0,       0,       0,
+/*   8 bs     9 ht    10 nl    11 vt    12 np    13 cr    14 so    15 si   */
+        0,       0,       0,       0,       0,       0,       0,       0,
+/*  16 dle   17 dc1   18 dc2   19 dc3   20 dc4   21 nak   22 syn   23 etb */
+        0,       0,       0,       0,       0,       0,       0,       0,
+/*  24 can   25 em    26 sub   27 esc   28 fs    29 gs    30 rs    31 us  */
+        0,       0,       0,       0,       0,       0,       0,       0,
+/*  32 sp    33  !    34  "    35  #    36  $    37  %    38  &    39  '  */
+       ' ',      0,       0,       0,       0,       0,       0,       0,
+/*  40  (    41  )    42  *    43  +    44  ,    45  -    46  .    47  /  */
+        0,       0,       0,       0,       0,      '-',      0,       0,
+/*  48  0    49  1    50  2    51  3    52  4    53  5    54  6    55  7  */
+       '0',     '1',     '2',     '3',     '4',     '5',     '6',     '7',
+/*  56  8    57  9    58  :    59  ;    60  <    61  =    62  >    63  ?  */
+       '8',     '9',      0,       0,       0,       0,       0,       0,
+/*  64  @    65  A    66  B    67  C    68  D    69  E    70  F    71  G  */
+        0,      'A',     'B',     'C',     'D',     'E',     'F',     'G',
+/*  72  H    73  I    74  J    75  K    76  L    77  M    78  N    79  O  */
+       'H',     'I',     'J',     'K',     'L',     'M',     'N',     'O',
+/*  80  P    81  Q    82  R    83  S    84  T    85  U    86  V    87  W  */
+       'P',     'Q',     'R',     'S',     'T',     'U',     'V',     'W',
+/*  88  X    89  Y    90  Z    91  [    92  \    93  ]    94  ^    95  _  */
+       'X',     'Y',     'Z',      0,       0,       0,       0,      '_',
+/*  96  `    97  a    98  b    99  c   100  d   101  e   102  f   103  g  */
+        0,      'A',     'B',     'C',     'D',     'E',     'F',     'G',
+/* 104  h   105  i   106  j   107  k   108  l   109  m   110  n   111  o  */
+       'H',     'I',     'J',     'K',     'L',     'M',     'N',     'O',
+/* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
+       'P',     'Q',     'R',     'S',     'T',     'U',     'V',     'W',
+/* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
+       'X',     'Y',     'Z',      0,       0,       0,       0,       0 };
 
     static final byte [] UNHEX =
     {    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
@@ -1715,6 +1725,41 @@ public class  HTTPParser {
         ,-1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1
         ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
     };
+
+    static final boolean [] normal_url_char = {
+/*   0 nul    1 soh    2 stx    3 etx    4 eot    5 enq    6 ack    7 bel  */
+    false,   false,   false,   false,   false,   false,   false,   false,
+/*   8 bs     9 ht    10 nl    11 vt    12 np    13 cr    14 so    15 si   */
+    false,   false,   false,   false,   false,   false,   false,   false,
+/*  16 dle   17 dc1   18 dc2   19 dc3   20 dc4   21 nak   22 syn   23 etb */
+    false,   false,   false,   false,   false,   false,   false,   false,
+/*  24 can   25 em    26 sub   27 esc   28 fs    29 gs    30 rs    31 us  */
+    false,   false,   false,   false,   false,   false,   false,   false,
+/*  32 sp    33  !    34  "    35  #    36  $    37  %    38  &    39  '  */
+    false,    true,    true,   false,    true,    true,    true,    true,
+/*  40  (    41  )    42  *    43  +    44  ,    45  -    46  .    47  /  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/*  48  0    49  1    50  2    51  3    52  4    53  5    54  6    55  7  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/*  56  8    57  9    58  :    59  ;    60  <    61  =    62  >    63  ?  */
+     true,    true,    true,    true,    true,    true,    true,   false,
+/*  64  @    65  A    66  B    67  C    68  D    69  E    70  F    71  G  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/*  72  H    73  I    74  J    75  K    76  L    77  M    78  N    79  O  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/*  80  P    81  Q    82  R    83  S    84  T    85  U    86  V    87  W  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/*  88  X    89  Y    90  Z    91  [    92  \    93  ]    94  ^    95  _  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/*  96  `    97  a    98  b    99  c   100  d   101  e   102  f   103  g  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/* 104  h   105  i   106  j   107  k   108  l   109  m   110  n   111  o  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
+     true,    true,    true,    true,    true,    true,    true,    true,
+/* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
+     true,    true,    true,    true,    true,    true,    true,   false };
+
     public static final byte A = 0x41;
     public static final byte B = 0x42;
     public static final byte C = 0x43;
