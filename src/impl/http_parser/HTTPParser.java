@@ -24,4 +24,8 @@ public class HTTPParser extends http_parser.lolevel.HTTPParser {
   public boolean getUpgrade() {
     return super.upgrade;
   }
+  
+  public boolean shouldKeepAlive() {
+    return super.http_should_keep_alive();
+  }
 } 

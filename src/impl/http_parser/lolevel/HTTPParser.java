@@ -1400,7 +1400,7 @@ public class  HTTPParser {
    * If you are the server, respond with the "Connection: close" header.
    * If you are the client, close the connection.
    */
-  boolean http_should_keep_alive() {
+  public boolean http_should_keep_alive() {
     if (http_major > 0 && http_minor > 0) {
       /* HTTP/1.1 */
       if ( 0 != (flags & F_CONNECTION_CLOSE) ) {
