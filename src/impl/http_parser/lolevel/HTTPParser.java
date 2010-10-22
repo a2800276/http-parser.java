@@ -151,6 +151,7 @@ public class  HTTPParser {
       int  pe = data.limit();
 
       byte ch     = data.get();           // the current character to process.
+      int  chi    = ch & 0xff;            // utility, ch without signedness for table lookups.
       byte c      = -1;                   // utility variably used for up- and downcasing etc.
       int to_read =  0;                   // used to keep track of how much of body, etc. is left to read
 
@@ -521,7 +522,7 @@ public class  HTTPParser {
           break;
       
         case req_path:
-          if (normal_url_char[ch]) break;
+          if (normal_url_char[chi]) break;
           switch (ch) {
             case SPACE:
               settings.call_on_url(this,data,url_mark, p-url_mark);
@@ -575,7 +576,7 @@ public class  HTTPParser {
           break;
       
         case req_query_string_start:
-          if (normal_url_char[ch]) {
+          if (normal_url_char[chi]) {
             query_string_mark = p;
             state = State.req_query_string;
             break;
@@ -609,7 +610,7 @@ public class  HTTPParser {
           break;
         
         case req_query_string:
-          if (normal_url_char[ch]) {
+          if (normal_url_char[chi]) {
             break;
           }
 
@@ -656,7 +657,7 @@ public class  HTTPParser {
           break;
 
         case req_fragment_start:
-          if (normal_url_char[ch]) {
+          if (normal_url_char[chi]) {
             fragment_mark = p;
             state = State.req_fragment;
             break;
@@ -695,7 +696,7 @@ public class  HTTPParser {
           break;
 
         case req_fragment:
-          if (normal_url_char[ch]) {
+          if (normal_url_char[chi]) {
             break;
           }
 
@@ -916,7 +917,7 @@ public class  HTTPParser {
 
         case header_field:
         {
-          c = (byte) acceptable_header[ch];
+          c = (byte) acceptable_header[chi];
           if (0 != c) {  
             switch (header_state) {
               case general:
@@ -1053,7 +1054,7 @@ public class  HTTPParser {
           state = State.header_value;
           index = 0;
 
-          c = (byte)acceptable_header[ch];
+          c = (byte)acceptable_header[chi];
 
           if (c == 0) {
             if (CR == ch) {
@@ -1122,7 +1123,7 @@ public class  HTTPParser {
 
         case header_value:
         {
-          c = (byte)acceptable_header[ch];
+          c = (byte)acceptable_header[chi];
 
           if (c == 0) {
             if (CR == ch) {
@@ -1262,7 +1263,7 @@ public class  HTTPParser {
             settings.call_on_error(this, "not chunked", data, p_err);
           }
 
-          c = UNHEX[ch];
+          c = UNHEX[chi];
           if (c == -1) {
             settings.call_on_error(this, "invalid hex char in chunk content length", data, p_err);
           }
@@ -1282,7 +1283,7 @@ public class  HTTPParser {
             break;
           }
 
-          c = UNHEX[ch];
+          c = UNHEX[chi];
 
           if (c == -1) {
             if (SEMI == ch || SPACE == ch) {
@@ -1713,7 +1714,24 @@ public class  HTTPParser {
 /* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
        'P',     'Q',     'R',     'S',     'T',     'U',     'V',     'W',
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
-       'X',     'Y',     'Z',      0,       0,       0,       0,       0 };
+       'X',     'Y',     'Z',      0,       0,       0,       0,       0,
+/* hi bit set, not ascii                                                  */
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0,
+        0,       0,       0,       0,       0,       0,       0,       0, };
 
     static final byte [] UNHEX =
     {    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
@@ -1723,6 +1741,14 @@ public class  HTTPParser {
         ,-1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1
         ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
         ,-1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
         ,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
     };
 
@@ -1758,7 +1784,26 @@ public class  HTTPParser {
 /* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
      true,    true,    true,    true,    true,    true,    true,    true,
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
-     true,    true,    true,    true,    true,    true,    true,   false };
+     true,    true,    true,    true,    true,    true,    true,   false,
+/* hi bit set, not ascii                                                  */
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    false,   false,   false,   false,   false,   false,   false,   false,
+    
+    };
 
     public static final byte A = 0x41;
     public static final byte B = 0x42;
