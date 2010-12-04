@@ -454,7 +454,7 @@ public class  HTTPParser {
           if (COLON == ch) {
             state = State.req_schema_slash;
             break;
-          } else if (DOT == ch) {
+          } else if (DOT == ch || isDigit(ch)) {
             state = State.req_host;
             break;
           }
@@ -878,7 +878,7 @@ public class  HTTPParser {
             break;
           }
 
-          c = upper(ch);
+          c = token(ch);
 
           if (c < A || Z < c) {
             settings.call_on_error(this, "invalid char in header", data, p_err);
@@ -917,7 +917,7 @@ public class  HTTPParser {
 
         case header_field:
         {
-          c = (byte) acceptable_header[chi];
+          c = token(ch);
           if (0 != c) {  
             switch (header_state) {
               case general:
@@ -1054,29 +1054,26 @@ public class  HTTPParser {
           state = State.header_value;
           index = 0;
 
-          c = (byte)acceptable_header[chi];
 
-          if (c == 0) {
-            if (CR == ch) {
-              settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
-              header_value_mark = -1;
-
-              header_state = HState.general;
-              state = State.header_almost_done;
-              break;
-            }
-
-            if (LF == ch) {
-              settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
-              header_value_mark = -1;
-              
-              state = State.header_field_start;
-              break;
-            }
+          if (CR == ch) {
+            settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
+            header_value_mark = -1;
 
             header_state = HState.general;
+            state = State.header_almost_done;
             break;
           }
+
+          if (LF == ch) {
+            settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
+            header_value_mark = -1;
+            
+            state = State.header_field_start;
+            break;
+          }
+
+
+          c = upper(ch);
 
           switch (header_state) {
             case upgrade:
@@ -1123,29 +1120,26 @@ public class  HTTPParser {
 
         case header_value:
         {
-          c = (byte)acceptable_header[chi];
 
-          if (c == 0) {
-            if (CR == ch) {
-              settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
-              header_value_mark = -1;
+          if (CR == ch) {
+            settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
+            header_value_mark = -1;
 
-              state = State.header_almost_done;
-              break;
-            }
+            state = State.header_almost_done;
+            break;
+          }
 
-            if (LF == ch) {
-              settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
-              header_value_mark = -1;
-              
-              if (!header_almost_done(ch)) {
-                settings.call_on_error(this,"incorrect header ending, expection LF", data, p_err);
-              }
-              break;
+          if (LF == ch) {
+            settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
+            header_value_mark = -1;
+            
+            if (!header_almost_done(ch)) {
+              settings.call_on_error(this,"incorrect header ending, expection LF", data, p_err);
             }
             break;
           }
 
+          c = upper(ch);
           switch (header_state) {
             case general:
               break;
@@ -1443,6 +1437,10 @@ public class  HTTPParser {
     char c = (char)(b);
     return (byte)Character.toUpperCase(c);
   }
+
+  byte token(byte b) {
+    return (byte)tokens[b];
+  }
 	
 
   HTTPMethod start_req_method_assign(byte c){
@@ -1677,12 +1675,16 @@ public class  HTTPParser {
     static final byte [] CLOSE = {
       0x43, 0x4c, 0x4f, 0x53, 0x45, 
     };
-    /* 
-     * ' ', '_', '-' and all alpha-numeric ascii characters are accepted by acceptable_header.
-     * The 'A'-'Z' are upper-cased.  
-    */
-    
-    static final char [] acceptable_header = {
+
+    /* Tokens as defined by rfc 2616. Also lowercases them.
+     *        token       = 1*<any CHAR except CTLs or separators>
+     *     separators     = "(" | ")" | "<" | ">" | "@"
+     *                    | "," | ";" | ":" | "\" | <">
+     *                    | "/" | "[" | "]" | "?" | "="
+     *                    | "{" | "}" | SP | HT
+     */
+
+    static final char [] tokens = {
 /*   0 nul    1 soh    2 stx    3 etx    4 eot    5 enq    6 ack    7 bel  */
         0,       0,       0,       0,       0,       0,       0,       0,
 /*   8 bs     9 ht    10 nl    11 vt    12 np    13 cr    14 so    15 si   */
@@ -1692,9 +1694,9 @@ public class  HTTPParser {
 /*  24 can   25 em    26 sub   27 esc   28 fs    29 gs    30 rs    31 us  */
         0,       0,       0,       0,       0,       0,       0,       0,
 /*  32 sp    33  !    34  "    35  #    36  $    37  %    38  &    39  '  */
-       ' ',      0,       0,       0,       0,       0,       0,       0,
+       ' ',     '!',     '"',     '#',     '$',     '%',     '&',    '\'',
 /*  40  (    41  )    42  *    43  +    44  ,    45  -    46  .    47  /  */
-        0,       0,       0,       0,       0,      '-',      0,       0,
+        0,       0,      '*',     '+',       0,     '-',     '.',     '/' ,
 /*  48  0    49  1    50  2    51  3    52  4    53  5    54  6    55  7  */
        '0',     '1',     '2',     '3',     '4',     '5',     '6',     '7',
 /*  56  8    57  9    58  :    59  ;    60  <    61  =    62  >    63  ?  */
@@ -1714,7 +1716,7 @@ public class  HTTPParser {
 /* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
        'P',     'Q',     'R',     'S',     'T',     'U',     'V',     'W',
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
-       'X',     'Y',     'Z',      0,       0,       0,       0,       0,
+       'X',     'Y',     'Z',      0,      '|',     '}',      0,       0,
 /* hi bit set, not ascii                                                  */
         0,       0,       0,       0,       0,       0,       0,       0,
         0,       0,       0,       0,       0,       0,       0,       0,
