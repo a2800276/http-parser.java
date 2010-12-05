@@ -880,8 +880,8 @@ public class  HTTPParser {
 
           c = token(ch);
 
-          if (c < A || Z < c) {
-            settings.call_on_error(this, "invalid char in header", data, p_err);
+          if (0 == c) {
+            settings.call_on_error(this, "invalid char in header:"+c, data, p_err);
           };
 
           header_field_mark = p;

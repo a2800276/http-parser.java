@@ -98,7 +98,7 @@ public class TestLoaderNG {
 		String [] result = new String[2];
 		MatchResult r = m.toMatchResult();
 		result[0] = r.group(1).trim();
-		result[1] = r.group(2).trim();
+		result[1] = r.group(2); //.trim();
 		return result;
 	}
 	
@@ -147,13 +147,11 @@ public class TestLoaderNG {
 			}
 			
 		}
-		//Byte [] fuckyou = bytes.toArray(JAVA_GENERICS_ROCK_HARD);
-		//return (byte[])fuckyou;
+
 		byts = new byte[bytes.size()];
 		int i = 0;
 		for (Byte b : bytes) {
 			byts[i++]=b;
-			// OMG, WFTBBQ!?
 		}
 		return byts;
 	}
@@ -389,6 +387,8 @@ public class TestLoaderNG {
 						}
 					}
 					if (null != currHField) {
+            //p(currHField);
+            //p(">"+currHValue+"<");
 						parsed_header.put(currHField, currHValue);
 						currHField = null;
 						currHValue = null;

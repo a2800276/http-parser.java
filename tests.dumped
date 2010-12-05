@@ -7,7 +7,7 @@ request_path:/test
 request_url :/test
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "User-Agent": "curl/7.18.0 (i486-pc-linux-gnu) libcurl/7.18.0 OpenSSL/0.9.8g zlib/1.2.3.3 libidn/1.1"}
 header_1 :{ "Host": "0.0.0.0=5000"}
@@ -26,7 +26,7 @@ request_path:/favicon.ico
 request_url :/favicon.ico
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Host": "0.0.0.0=5000"}
 header_1 :{ "User-Agent": "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9) Gecko/2008061015 Firefox/3.0"}
@@ -50,7 +50,7 @@ request_path:/dumbfuck
 request_url :/dumbfuck
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "aaaaaaaaaaaaa": "++++++++++"}
 should_keep_alive         :1
@@ -67,7 +67,7 @@ request_path:/forums/1/topics/2375
 request_url :/forums/1/topics/2375?page=1#posts-17408
 fragment    :posts-17408
 query_string:page=1
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -83,7 +83,7 @@ request_path:/get_no_headers_no_body/world
 request_url :/get_no_headers_no_body/world
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -99,7 +99,7 @@ request_path:/get_one_header_no_body
 request_url :/get_one_header_no_body
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Accept": "*/*"}
 should_keep_alive         :1
@@ -222,7 +222,7 @@ request_path:/with_"stupid"_quotes
 request_url :/with_"stupid"_quotes?foo="bar"
 fragment    :
 query_string:foo="bar"
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -238,7 +238,7 @@ request_path:/test
 request_url :/test
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Host": "0.0.0.0:5000"}
 header_1 :{ "User-Agent": "ApacheBench/2.3"}
@@ -257,7 +257,7 @@ request_path:/test.cgi
 request_url :/test.cgi?foo=bar?baz
 fragment    :
 query_string:foo=bar?baz
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -273,7 +273,7 @@ request_path:/test
 request_url :/test
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -289,7 +289,7 @@ request_path:/demo
 request_url :/demo
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Host": "example.com"}
 header_1 :{ "Connection": "Upgrade"}
@@ -304,15 +304,15 @@ http_major                :1
 http_minor                :1
 
 name  :connect request
-raw   :"CONNECT home.netscape.com:443 HTTP/1.0\r\nUser-agent: Mozilla/1.1N\r\nProxy-authorization: basic aGVsbG86d29ybGQ=\r\n\r\n"
+raw   :"CONNECT home0.netscape.com:443 HTTP/1.0\r\nUser-agent: Mozilla/1.1N\r\nProxy-authorization: basic aGVsbG86d29ybGQ=\r\n\r\n"
 type  :HTTP_REQUEST
 method: HTTP_CONNECT
 status_code :0
 request_path:
-request_url :home.netscape.com:443
+request_url :home0.netscape.com:443
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "User-agent": "Mozilla/1.1N"}
 header_1 :{ "Proxy-authorization": "basic aGVsbG86d29ybGQ="}
@@ -330,15 +330,31 @@ request_path:/test
 request_url :/test
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
 http_major                :1
 http_minor                :1
 
+name  :request with no http version
+raw   :"GET /\r\n\r\n"
+type  :HTTP_REQUEST
+method: HTTP_GET
+status_code :0
+request_path:/
+request_url :/
+fragment    :
+query_string:
+body        :""
+body_size   :0
+should_keep_alive         :0
+upgrade                   :0
+http_major                :0
+http_minor                :9
+
 name  :google 301
-raw   :"HTTP/1.1 301 Moved Permanently\r\nLocation: http://www.google.com/\r\nContent-Type: text/html; charset=UTF-8\r\nDate: Sun, 26 Apr 2009 11:11:49 GMT\r\nExpires: Tue, 26 May 2009 11:11:49 GMT\r\nCache-Control: public, max-age=2592000\r\nServer: gws\r\nContent-Length: 219\r\n\r\n<HTML><HEAD><meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\">\n<TITLE>301 Moved</TITLE></HEAD><BODY>\n<H1>301 Moved</H1>\nThe document has moved\n<A HREF=\"http://www.google.com/\">here</A>.\r\n</BODY></HTML>\r\n"
+raw   :"HTTP/1.1 301 Moved Permanently\r\nLocation: http://www.google.com/\r\nContent-Type: text/html; charset=UTF-8\r\nDate: Sun, 26 Apr 2009 11:11:49 GMT\r\nExpires: Tue, 26 May 2009 11:11:49 GMT\r\nX-$PrototypeBI-Version: 1.6.0.3\r\nCache-Control: public, max-age=2592000\r\nServer: gws\r\nContent-Length:  219  \r\n\r\n<HTML><HEAD><meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\">\n<TITLE>301 Moved</TITLE></HEAD><BODY>\n<H1>301 Moved</H1>\nThe document has moved\n<A HREF=\"http://www.google.com/\">here</A>.\r\n</BODY></HTML>\r\n"
 type  :HTTP_RESPONSE
 method: HTTP_DELETE
 status_code :301
@@ -352,9 +368,10 @@ header_0 :{ "Location": "http://www.google.com/"}
 header_1 :{ "Content-Type": "text/html; charset=UTF-8"}
 header_2 :{ "Date": "Sun, 26 Apr 2009 11:11:49 GMT"}
 header_3 :{ "Expires": "Tue, 26 May 2009 11:11:49 GMT"}
-header_4 :{ "Cache-Control": "public, max-age=2592000"}
-header_5 :{ "Server": "gws"}
-header_6 :{ "Content-Length": "219"}
+header_4 :{ "X-$PrototypeBI-Version": "1.6.0.3"}
+header_5 :{ "Cache-Control": "public, max-age=2592000"}
+header_6 :{ "Server": "gws"}
+header_7 :{ "Content-Length": "219  "}
 should_keep_alive         :1
 upgrade                   :0
 http_major                :1
@@ -390,7 +407,7 @@ request_path:
 request_url :
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -406,7 +423,7 @@ request_path:
 request_url :
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 should_keep_alive         :1
 upgrade                   :0
@@ -478,7 +495,7 @@ request_path:
 request_url :
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Server": "DCLK-AdSvr"}
 header_1 :{ "Content-Type": "text/xml"}
@@ -498,7 +515,7 @@ request_path:
 request_url :
 fragment    :
 query_string:
-body        :""
+body        :""
 body_size   :0
 header_0 :{ "Date": "Thu, 03 Jun 2010 09:56:32 GMT"}
 header_1 :{ "Server": "Apache/2.2.3 (Red Hat)"}
@@ -533,6 +550,52 @@ header_4 :{ "Content-Length": "16"}
 header_5 :{ "Date": "Fri, 23 Jul 2010 18:45:38 GMT"}
 header_6 :{ "Connection": "keep-alive"}
 should_keep_alive         :1
+upgrade                   :0
+http_major                :1
+http_minor                :1
+
+name  :field underscore
+raw   :"HTTP/1.1 200 OK\r\nDate: Tue, 28 Sep 2010 01:14:13 GMT\r\nServer: Apache\r\nCache-Control: no-cache, must-revalidate\r\nExpires: Mon, 26 Jul 1997 05:00:00 GMT\r\n.et-Cookie: PlaxoCS=1274804622353690521; path=/; domain=.plaxo.com\r\nVary: Accept-Encoding\r\n_eep-Alive: timeout=45\r\n_onnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n0\r\n\r\n"
+type  :HTTP_RESPONSE
+method: HTTP_DELETE
+status_code :200
+request_path:
+request_url :
+fragment    :
+query_string:
+body        :""
+body_size   :0
+header_0 :{ "Date": "Tue, 28 Sep 2010 01:14:13 GMT"}
+header_1 :{ "Server": "Apache"}
+header_2 :{ "Cache-Control": "no-cache, must-revalidate"}
+header_3 :{ "Expires": "Mon, 26 Jul 1997 05:00:00 GMT"}
+header_4 :{ ".et-Cookie": "PlaxoCS=1274804622353690521; path=/; domain=.plaxo.com"}
+header_5 :{ "Vary": "Accept-Encoding"}
+header_6 :{ "_eep-Alive": "timeout=45"}
+header_7 :{ "_onnection": "Keep-Alive"}
+header_8 :{ "Transfer-Encoding": "chunked"}
+header_9 :{ "Content-Type": "text/html"}
+header_10 :{ "Connection": "close"}
+should_keep_alive         :0
+upgrade                   :0
+http_major                :1
+http_minor                :1
+
+name  :non-ASCII in status line
+raw   :"HTTP/1.1 500 Oriëntatieprobleem\r\nDate: Fri, 5 Nov 2010 23:07:12 GMT+2\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+type  :HTTP_RESPONSE
+method: HTTP_DELETE
+status_code :500
+request_path:
+request_url :
+fragment    :
+query_string:
+body        :""
+body_size   :0
+header_0 :{ "Date": "Fri, 5 Nov 2010 23:07:12 GMT+2"}
+header_1 :{ "Content-Length": "0"}
+header_2 :{ "Connection": "close"}
+should_keep_alive         :0
 upgrade                   :0
 http_major                :1
 http_minor                :1
