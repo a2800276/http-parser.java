@@ -2,6 +2,7 @@ package http_parser.lolevel;
 
 import java.nio.ByteBuffer;
 import http_parser.HTTPException;
+import http_parser.Util;
 
 public class UnitTest {
 

@@ -373,7 +373,7 @@ public class  HTTPParser {
 
 
         case start_req:
-          if (CR==ch || LF == LF) {
+          if (CR==ch || LF == ch) {
             break;
           }
           flags = 0;

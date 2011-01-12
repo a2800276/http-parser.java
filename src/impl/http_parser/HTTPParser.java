@@ -1,5 +1,7 @@
 package http_parser;
 
+import java.nio.ByteBuffer;
+
 public class HTTPParser extends http_parser.lolevel.HTTPParser {
   
   public HTTPParser() { super(); }
@@ -27,5 +29,8 @@ public class HTTPParser extends http_parser.lolevel.HTTPParser {
   
   public boolean shouldKeepAlive() {
     return super.http_should_keep_alive();
+  }
+  public void execute(ParserSettings settings, ByteBuffer data) {
+   this.execute(settings.getLoLevelSettings(), data);
   }
 } 

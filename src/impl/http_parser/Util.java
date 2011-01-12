@@ -1,35 +1,34 @@
-package http_parser.lolevel;
+package http_parser;
 
 import java.nio.ByteBuffer;
-import http_parser.HTTPException;
 
 public class Util {
-  public static String toString(HTTPParser p) {
-    StringBuilder builder = new StringBuilder();
-    
-    // the stuff up to the break is ephermeral and only meaningful
-    // while the parser is parsing. In general, this method is 
-    // probably only useful during debugging.
-
-    builder.append("state :"); builder.append(p.state); builder.append("\n");
-    builder.append("header_state :"); builder.append(p.header_state); builder.append("\n");
-    builder.append("strict :"); builder.append(p.strict); builder.append("\n");
-    builder.append("index :"); builder.append(p.index); builder.append("\n");
-    builder.append("flags :"); builder.append(p.flags); builder.append("\n");
-    builder.append("nread :"); builder.append(p.nread); builder.append("\n");
-    builder.append("content_length :"); builder.append(p.content_length); builder.append("\n");
-
-
-    builder.append("type :"); builder.append(p.type); builder.append("\n");
-    builder.append("http_major :"); builder.append(p.http_major); builder.append("\n");
-    builder.append("http_minor :"); builder.append(p.http_minor); builder.append("\n");
-    builder.append("status_code :"); builder.append(p.status_code); builder.append("\n");
-    builder.append("method :"); builder.append(p.method); builder.append("\n");
-    builder.append("upgrade :"); builder.append(p.upgrade); builder.append("\n");
-
-    return builder.toString();
-
-  }
+//  public static String toString(http_parser.lolevel.HTTPParser p) {
+//    StringBuilder builder = new StringBuilder();
+//    
+//    // the stuff up to the break is ephermeral and only meaningful
+//    // while the parser is parsing. In general, this method is 
+//    // probably only useful during debugging.
+//
+//    builder.append("state :"); builder.append(p.state); builder.append("\n");
+//    builder.append("header_state :"); builder.append(p.header_state); builder.append("\n");
+//    builder.append("strict :"); builder.append(p.strict); builder.append("\n");
+//    builder.append("index :"); builder.append(p.index); builder.append("\n");
+//    builder.append("flags :"); builder.append(p.flags); builder.append("\n");
+//    builder.append("nread :"); builder.append(p.nread); builder.append("\n");
+//    builder.append("content_length :"); builder.append(p.content_length); builder.append("\n");
+//
+//
+//    builder.append("type :"); builder.append(p.type); builder.append("\n");
+//    builder.append("http_major :"); builder.append(p.http_major); builder.append("\n");
+//    builder.append("http_minor :"); builder.append(p.http_minor); builder.append("\n");
+//    builder.append("status_code :"); builder.append(p.status_code); builder.append("\n");
+//    builder.append("method :"); builder.append(p.method); builder.append("\n");
+//    builder.append("upgrade :"); builder.append(p.upgrade); builder.append("\n");
+//
+//    return builder.toString();
+//
+//  }
 
   public static String error (String mes, ByteBuffer b, int begining) {
       // the error message should look like this:
