@@ -98,6 +98,8 @@ public class ParserSettings extends http_parser.lolevel.ParserSettings {
       public void cb(HTTPParser parser, String error) {
         if (null != ParserSettings.this.on_error) {
           ParserSettings.this.on_error.cb(parser, error);
+        } else {
+          throw new HTTPException(error);
         }
         
       }
@@ -128,7 +130,7 @@ public class ParserSettings extends http_parser.lolevel.ParserSettings {
     this._on_header_field = new HTTPDataCallback() {
       @Override
       public int cb(HTTPParser p, byte[] by, int pos, int len) {
-        // last value complete, call on_value with full value, reset value.
+        // previous value complete, call on_value with full value, reset value.
         if (0 != ParserSettings.this.value.size()) {
           // check we're even interested...
           if (null != ParserSettings.this.on_header_value) {
@@ -153,7 +155,7 @@ public class ParserSettings extends http_parser.lolevel.ParserSettings {
       @Override
       public int cb(HTTPParser p, byte[] by, int pos, int len) {
         
-        // last field complete, call on_field with full field value, reset field.
+        // previous field complete, call on_field with full field value, reset field.
         if (0 != ParserSettings.this.field.size()) {
           // check we're even interested...
           if (null != ParserSettings.this.on_header_field) {

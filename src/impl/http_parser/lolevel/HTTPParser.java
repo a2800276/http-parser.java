@@ -271,7 +271,7 @@ public class  HTTPParser {
         /* major HTTP version or dot */
         case res_http_major:
           if (DOT == ch) {
-            state = State.res_http_minor;
+            state = State.res_first_http_minor;
             break;
           }
           if (!isDigit(ch)) {
@@ -305,7 +305,6 @@ public class  HTTPParser {
           }
           http_minor *= 10;
           http_minor += (ch - 0x30);
-
           if (http_minor > 999) {
             settings.call_on_error(this, "invalid http minor version: "+http_minor, data, p_err);
           }
