@@ -105,11 +105,26 @@ public class  HTTPParser {
     // indicate that all the data has been send be the client/server,
     // else there is no way of knowing the message is complete. 
     int len = (data.limit() - data.position());
-		if (0 == len) {
-			if (State.body_identity_eof == state) {
-				settings.call_on_message_complete(this);
-			}
-		}
+    if (0 == len) {
+      //			if (State.body_identity_eof == state) {
+      //				settings.call_on_message_complete(this);
+      //			}
+      switch (state) {
+        case body_identity_eof:
+          settings.call_on_message_complete(this);
+          return;
+
+        case dead:
+        case start_res_or_res:
+        case start_res:
+        case start_req:
+          return;
+
+        default:
+          // should we really consider this an error!?
+          throw new HTTPException("empty bytes! "+state); // error
+      }
+    }
 
 		
     // in case the _previous_ call to the parser only has data to get to
@@ -410,6 +425,8 @@ public class  HTTPParser {
                 method = HTTPMethod.HTTP_MOVE;
               } else if (1 == index && E == ch) {
                 method = HTTPMethod.HTTP_MERGE;
+              } else if (1 == index && DASH == ch) { /* M-SEARCH */
+                method = HTTPMethod.HTTP_MSEARCH;
               } else if (2 == index && A == ch) {
                 method = HTTPMethod.HTTP_MKACTIVITY;
               }
@@ -417,6 +434,8 @@ public class  HTTPParser {
             method = HTTPMethod.HTTP_PROPFIND;
           } else if (1 == index && HTTPMethod.HTTP_POST     == method && U == ch) {
             method = HTTPMethod.HTTP_PUT;
+          } else if (2 == index && HTTPMethod.HTTP_UNLOCK   == method && S == ch) {
+            method = HTTPMethod.HTTP_UNSUBSCRIBE;
           } else if (4 == index && HTTPMethod.HTTP_PROPFIND == method && P == ch) {
             method = HTTPMethod.HTTP_PROPPATCH;
           } else {
@@ -433,7 +452,7 @@ public class  HTTPParser {
           if (SPACE == ch) {
             break;
           }
-          if (SLASH == ch) {
+          if (SLASH == ch || STAR == ch) {
             url_mark  = p;
             path_mark = p;
             state = State.req_path;
@@ -1252,8 +1271,14 @@ public class  HTTPParser {
 
         /******************* Chunk *******************/
         case chunk_size_start:
+          if (1 != this.nread) {
+            settings.call_on_error(this, "nread != 1 (chunking)", data, p_err);
+            return;
+          
+          }
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
+            return;
           }
 
           c = UNHEX[chi];
@@ -1308,10 +1333,14 @@ public class  HTTPParser {
         case chunk_size_almost_done:
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
+            return;
           }
           if (strict && LF != ch) {
             settings.call_on_error(this, "expected LF at end of chunk size", data, p_err);
+            return;
           }
+
+          this.nread = 0;
 
           if (0 == content_length) {
             flags |= F_TRAILING;
@@ -1449,12 +1478,14 @@ public class  HTTPParser {
       case G: return HTTPMethod.HTTP_GET;     
       case H: return HTTPMethod.HTTP_HEAD;    
       case L: return HTTPMethod.HTTP_LOCK;    
-      case M: return HTTPMethod.HTTP_MKCOL;    /* or MOVE, MKACTIVITY, MERGE */
+      case M: return HTTPMethod.HTTP_MKCOL;    /* or MOVE, MKACTIVITY, MERGE, M-SEARCH */
+      case N: return HTTPMethod.HTTP_NOTIFY; 
       case O: return HTTPMethod.HTTP_OPTIONS; 
       case P: return HTTPMethod.HTTP_POST;     /* or PROPFIND, PROPPATH, PUT */
       case R: return HTTPMethod.HTTP_REPORT;
+      case S: return HTTPMethod.HTTP_SUBSCRIBE;
       case T: return HTTPMethod.HTTP_TRACE;   
-      case U: return HTTPMethod.HTTP_UNLOCK;  
+      case U: return HTTPMethod.HTTP_UNLOCK; /* or UNSUBSCRIBE */ 
     }
     return null; // ugh.
   }
@@ -1487,7 +1518,6 @@ public class  HTTPParser {
     if (LF != ch) {
       return false;
     }
-
     if (0 != (flags & F_TRAILING)) {
       /* End of a chunked request */
 
@@ -1551,6 +1581,7 @@ public class  HTTPParser {
     // Exit, the rest of the connect is in a different protocol.
     if (upgrade) {
       settings.call_on_message_complete(this);
+      state = State.body_identity_eof;
       return true;
     }
 
@@ -1606,10 +1637,6 @@ public class  HTTPParser {
 	boolean parsing_header(State state) {
 
 		switch (state) {
-			case chunk_size_start :
-			case chunk_size :
-			case chunk_size_almost_done :
-			case chunk_parameters :
 			case chunk_data :
 			case chunk_data_almost_done :
 			case chunk_data_done :
@@ -1618,7 +1645,7 @@ public class  HTTPParser {
 				return false;
 
 		}
-		return (0==(flags & F_TRAILING));
+    return true;
 	}
 
 	/* "Dial C for Constants" */
@@ -1842,6 +1869,7 @@ public class  HTTPParser {
     public static final byte QMARK = 0x3f;
     public static final byte SLASH = 0x2f;
     public static final byte DASH = 0x2d;
+    public static final byte STAR = 0x2a;
     public static final byte NULL = 0x00;
   }
 
@@ -1897,12 +1925,19 @@ public class  HTTPParser {
 
     , header_almost_done
 
-    , headers_almost_done
-
     , chunk_size_start
     , chunk_size
-    , chunk_size_almost_done
     , chunk_parameters
+    , chunk_size_almost_done
+
+    , headers_almost_done
+// This space intentionally not left blank, comment from c, for orientation...
+// the c version uses <= s_header_almost_done in java, we list the states explicitly
+// in `parsing_header()`
+/* Important: 's_headers_almost_done' must be the last 'header' state. All
+ * states beyond this must be 'body' states. It is used for overflow
+ * checking. See the PARSING_HEADER() macro.
+ */
     , chunk_data
     , chunk_data_almost_done
     , chunk_data_done

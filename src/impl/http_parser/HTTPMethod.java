@@ -23,7 +23,13 @@ public enum HTTPMethod {
   , HTTP_REPORT("REPORT")
   , HTTP_MKACTIVITY("MKACTIVITY")
   , HTTP_CHECKOUT("CHECKOUT")
-  , HTTP_MERGE("MERGE");
+  , HTTP_MERGE("MERGE")
+  , HTTP_MSEARCH("M-SEARCH")
+  , HTTP_NOTIFY("NOTIFY")
+  , HTTP_SUBSCRIBE("SUBSCRIBE")
+  , HTTP_UNSUBSCRIBE("UNSUBSCRIBE")
+  
+  ;
 
   private static Charset ASCII;
   static {
@@ -79,12 +85,18 @@ public enum HTTPMethod {
     else if ("CHECKOUT".equalsIgnoreCase(s)){return HTTP_CHECKOUT;}
     else if ("HTTP_MERGE".equalsIgnoreCase(s)) {return HTTP_MERGE;}
     else if ("MERGE".equalsIgnoreCase(s)){return HTTP_MERGE;}
-
-    else                                         {return null;}
-  }	
+    else if ("HTTP_MSEARCH".equalsIgnoreCase(s))     {return HTTP_MSEARCH;}
+    else if ("M-SEARCH".equalsIgnoreCase(s))         {return HTTP_MSEARCH;}
+    else if ("HTTP_NOTIFY".equalsIgnoreCase(s))      {return HTTP_NOTIFY;}
+    else if ("NOTIFY".equalsIgnoreCase(s))           {return HTTP_NOTIFY;}
+    else if ("HTTP_SUBSCRIBE".equalsIgnoreCase(s))   {return HTTP_SUBSCRIBE;}
+    else if ("SUBSCRIBE".equalsIgnoreCase(s))        {return HTTP_SUBSCRIBE;}
+    else if ("HTTP_UNSUBSCRIBE".equalsIgnoreCase(s)) {return HTTP_UNSUBSCRIBE;}
+    else if ("UNSUBSCRIBE".equalsIgnoreCase(s))      {return HTTP_UNSUBSCRIBE;}
+	  else                                             {return null;}
+	}	
   void init (String name) {
     ASCII = null == ASCII ? Charset.forName("US-ASCII") : ASCII;
     this.bytes = name.getBytes(ASCII);
   }
-
 }
