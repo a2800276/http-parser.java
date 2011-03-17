@@ -146,6 +146,7 @@ public class  HTTPParser {
 
     // this is where the work gets done, traverse the available data...
     while (data.position() != data.limit()) {
+      if (upgrade) break;
 
             p = data.position();
       int  pe = data.limit();
