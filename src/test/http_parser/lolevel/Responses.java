@@ -43,21 +43,25 @@ public class Responses {
   static void test_message(Message mes) {
     int raw_len = mes.raw.length;
     for (int msg1len = 0; msg1len != raw_len; ++msg1len) {
+      mes.reset();
       ByteBuffer msg1 = ByteBuffer.wrap(mes.raw, 0, msg1len);
       ByteBuffer msg2 = ByteBuffer.wrap(mes.raw, msg1len, mes.raw.length - msg1len);
 
       HTTPParser parser = new HTTPParser(mes.type);
-      Util.Settings settings = Util.settings();
+      ParserSettings settings = mes.settings();
       if (msg1len !=0) {
         parser.execute(settings, msg1);
         if (mes.upgrade && parser.upgrade) {
-          goto_test(mes, settings);
+          // Messages have a settings() that checks itself...
+          check(1 == mes.num_called);
+          continue; 
         }
         check(msg1.position() == msg1.limit());
       }
       parser.execute(settings, msg2);
       if (mes.upgrade && parser.upgrade) {
-        goto_test(mes, settings);
+        check(1 == mes.num_called);
+        continue; 
       }
 
       check(msg2.position() == msg2.limit());
@@ -66,18 +70,16 @@ public class Responses {
       parser.execute(settings, empty);
       
       if (mes.upgrade && parser.upgrade) {
-        goto_test(mes, settings);
+        check(1 == mes.num_called);
+        continue;
       }
       check(empty.position() == empty.limit());
       check(0 == empty.limit());
+      check(1 == mes.num_called);
 
-      goto_test(mes, settings);
     }
   }
 
-  static void goto_test(Message mes, Util.Settings s) {
-    check (1 == s.numCalled());
-  }
 
   public static void test () {
     List<Message> all = TestLoaderNG.load("tests.dumped");

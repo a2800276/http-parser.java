@@ -37,12 +37,13 @@ public class Message {
   boolean headers_complete_called;
   boolean message_complete_called;
   boolean message_complete_on_eof;
-
+  
 
   Map<String,String> parsed_header;
   String currHField;
   String currHValue;
   byte [] pbody;
+  int num_called;
 
   public String toString() {
     StringBuilder b = new StringBuilder();
@@ -73,6 +74,7 @@ public class Message {
   void reset () {
     this.parsed_header = new HashMap<String, String>();
     this.pbody         = null;
+    this.num_called    = 0;
 
   }
   void check (boolean val, String mes) {
@@ -276,6 +278,7 @@ public class Message {
     s.on_message_complete = new HTTPCallback() {
       public int cb(HTTPParser p) {
         message_complete_called = true;
+        num_called += 1;
         if (   p.http_minor  != http_minor
             || p.http_major  != http_major
             || p.status_code != status_code ) {
