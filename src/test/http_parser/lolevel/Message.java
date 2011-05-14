@@ -162,7 +162,7 @@ public class Message {
     //System.exit(0);
   } // execute_permutations
   void parse(HTTPParser p, ParserSettings s, ByteBuffer b) {
-    p("About to parse: "+b.position() + "->" + b.limit());
+    //p("About to parse: "+b.position() + "->" + b.limit());
     p.execute(s, b);
   }
 

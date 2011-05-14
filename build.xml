@@ -49,4 +49,26 @@
 	</javadoc>
 </target>
 
+<target name="test_permutations" depends="compile">
+  <java classname="http_parser.lolevel.TestLoaderNG">
+    <arg value="tests.dumped"/>
+    <classpath>
+      <pathelement location="classes/"/>
+      <pathelement location="ext/primitives.jar/"/>
+    </classpath> 
+  </java>
+</target>
+
+<target name="test_unit" depends="compile">
+  <java classname="http_parser.lolevel.UnitTest">
+    <arg value="tests.dumped"/>
+    <classpath>
+      <pathelement location="classes/"/>
+      <pathelement location="ext/primitives.jar/"/>
+    </classpath> 
+  </java>
+</target>
+
+<target name="test" depends="test_permutations, test_unit"/>
+
 </project>
