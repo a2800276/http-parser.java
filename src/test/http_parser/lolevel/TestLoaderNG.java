@@ -41,12 +41,18 @@ public class TestLoaderNG {
   static void p(Object o) {
     System.out.println(o);
   }
-  public static List<Message> load (String fn) throws IOException {
-    BufferedReader buf = new BufferedReader(new FileReader(fn));
-    return load(buf);
+  public static List<Message> load (String fn) {
+    List<Message> list = null;
+    try {
+      BufferedReader buf = new BufferedReader(new FileReader(fn));
+      list = load(buf);
+    } catch (Throwable t) {
+      throw new RuntimeException(t);
+    }
+      return list;
 
   }
-  public static Message parse (String message) throws IOException {
+  public static Message parse (String message) {
     List<Message> list = load(new BufferedReader(new StringReader(message)));  
     if (null == list || 0 == list.size() ) {
       return null;
@@ -54,51 +60,55 @@ public class TestLoaderNG {
     return list.get(0);
   }
 
-  public static List<Message> load (BufferedReader buf) throws IOException {
+  public static List<Message> load (BufferedReader buf) {
     List<Message>    list = new LinkedList<Message>();
     String        line = null;
     Message          curr = new Message();
     Pattern    pattern = Pattern.compile("(\\S+)\\s*:(.*)");
-    while (null != (line = buf.readLine()) ){
-      if ("".equals(line.trim())) {
-        list.add (curr);
-        curr = new Message();
-        continue;
-      }
-      Matcher m = pattern.matcher(line);
-      if (m.matches()) {
-        // you can not be fucking serious!?
-        // this has got to be the most retarded regex 
-        // interface in the history of the world ...
-        // (though I'm sure there's worse c++ regexp libs...)
-        MatchResult r = m.toMatchResult();
-        String    key = r.group(1).trim();
-        String  value = r.group(2).trim();
-        if ("name".equals(key))         {curr.name = value;}
-        else if ("raw".equals(key))          {curr.raw = toByteArray(value);} //!
-        else if ("type".equals(key))         {curr.type = ParserType.parse(value);}
-        else if ("method".equals(key))       {curr.method = HTTPMethod.parse(value);}
-        else if ("status_code".equals(key))  {curr.status_code = Integer.parseInt(value);}
-        else if ("request_path".equals(key)) {curr.request_path = value;}
-        else if ("request_url".equals(key))  {curr.request_url = value;}
+    try {
+      while (null != (line = buf.readLine()) ){
+        if ("".equals(line.trim())) {
+          list.add (curr);
+          curr = new Message();
+          continue;
+        }
+        Matcher m = pattern.matcher(line);
+        if (m.matches()) {
+          // you can not be fucking serious!?
+          // this has got to be the most retarded regex 
+          // interface in the history of the world ...
+          // (though I'm sure there's worse c++ regexp libs...)
+          MatchResult r = m.toMatchResult();
+          String    key = r.group(1).trim();
+          String  value = r.group(2).trim();
+               if ("name".equals(key))         {curr.name = value;}
+          else if ("raw".equals(key))          {curr.raw = toByteArray(value);} //!
+          else if ("type".equals(key))         {curr.type = ParserType.parse(value);}
+          else if ("method".equals(key))       {curr.method = HTTPMethod.parse(value);}
+          else if ("status_code".equals(key))  {curr.status_code = Integer.parseInt(value);}
+          else if ("request_path".equals(key)) {curr.request_path = value;}
+          else if ("request_url".equals(key))  {curr.request_url = value;}
 
-        else if ("fragment".equals(key))     {curr.fragment = value;}
-        else if ("query_string".equals(key)) {curr.query_string = value;}
-        else if ("body".equals(key))         {curr.body = toByteArray(value);} //!
-        else if ("body_size".equals(key))    {curr.body_size = Integer.parseInt(value);}
-        else if (key.startsWith("header"))   {
-          String [] h = getHeader(value); 
-          curr.header.put(h[0], h[1]);
-        } 
-        else if ("should_keep_alive".equals(key)) 
-        {curr.should_keep_alive = (1 == Integer.parseInt(value));}
-        else if ("upgrade".equals(key))      {curr.upgrade           = (1 == Integer.parseInt(value));}
-        else if ("http_major".equals(key))   {curr.http_major = Integer.parseInt(value);}
-        else if ("http_minor".equals(key))   {curr.http_minor = Integer.parseInt(value);}
-      } else {
-        p("WTF?"+line);
-      }
+          else if ("fragment".equals(key))     {curr.fragment = value;}
+          else if ("query_string".equals(key)) {curr.query_string = value;}
+          else if ("body".equals(key))         {curr.body = toByteArray(value);} //!
+          else if ("body_size".equals(key))    {curr.body_size = Integer.parseInt(value);}
+          else if (key.startsWith("header"))   {
+            String [] h = getHeader(value); 
+            curr.header.put(h[0], h[1]);
+          } 
+          else if ("should_keep_alive".equals(key)) 
+          {curr.should_keep_alive = (1 == Integer.parseInt(value));}
+          else if ("upgrade".equals(key))      {curr.upgrade           = (1 == Integer.parseInt(value));}
+          else if ("http_major".equals(key))   {curr.http_major = Integer.parseInt(value);}
+          else if ("http_minor".equals(key))   {curr.http_minor = Integer.parseInt(value);}
+        } else {
+          p("WTF?"+line);
+        }
 
+      }
+    } catch (Throwable t) {
+      throw new RuntimeException(t);
     }
     return list;
   }

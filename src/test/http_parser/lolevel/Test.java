@@ -6,6 +6,7 @@ public class Test {
     UnitTest.test();
     TestHeaderOverflowError.test();
     TestNoOverflowLongBody.test();
+    Responses.test();
   }
 
 }
