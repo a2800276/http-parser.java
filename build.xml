@@ -60,7 +60,7 @@
 </target>
 
 <target name="test_unit" depends="compile">
-  <java classname="http_parser.lolevel.UnitTest">
+  <java classname="http_parser.lolevel.Test">
     <arg value="tests.dumped"/>
     <classpath>
       <pathelement location="classes/"/>
