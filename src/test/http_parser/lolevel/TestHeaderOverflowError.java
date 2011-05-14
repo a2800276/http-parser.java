@@ -2,6 +2,7 @@ package http_parser.lolevel;
 
 import java.nio.*;
 
+import static http_parser.lolevel.Util.*;
 
 public class TestHeaderOverflowError {
 
@@ -11,14 +12,14 @@ public class TestHeaderOverflowError {
     
     int numbytes = buf.limit();
 
-    parser.execute(settingsNull(), buf);
+    parser.execute(Util.SETTINGS_NULL, buf);
 
     check(numbytes == buf.position());
 
     buf      = buffer("header-key: header-value\r\n");
     numbytes = buf.limit();
     for (int i = 0; i!= 1000; ++i) {
-      parser.execute(settingsNull(), buf);
+      parser.execute(Util.SETTINGS_NULL, buf);
       check(numbytes == buf.position());
 
       buf.rewind();
@@ -42,21 +43,5 @@ public class TestHeaderOverflowError {
     test(http_parser.ParserType.HTTP_RESPONSE);
   }
 
-  static void check(boolean betterBtrue) {
-    if (!betterBtrue) {
-      throw new RuntimeException("!");
-    }
-  }
-  static void p(Object o) {
-    System.out.println(o);
-  }
-
-  static ByteBuffer buffer(String str) {
-    return ByteBuffer.wrap(str.getBytes());
-  }
-  
-  static ParserSettings settingsNull () {
-    return new ParserSettings();
-  }
 
 }
