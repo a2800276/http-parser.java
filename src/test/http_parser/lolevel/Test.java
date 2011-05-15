@@ -7,6 +7,7 @@ public class Test {
     TestHeaderOverflowError.test();
     TestNoOverflowLongBody.test();
     Responses.test();
+    Requests.test();
   }
 
 }
