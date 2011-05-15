@@ -177,7 +177,7 @@ public class  HTTPParser {
           settings.call_on_error(this, "possible buffer overflow", data, p_err);
         }
       }
-
+p(state + ":" + ch +":"+p);
       switch (state) {
          /*
           * this state is used after a 'Connection: close' message
@@ -547,6 +547,8 @@ public class  HTTPParser {
           break;
       
         case req_path:
+          p(chi);
+          p(normal_url_char[chi]);
           if (normal_url_char[chi]) break;
           switch (ch) {
             case SPACE:

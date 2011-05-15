@@ -115,7 +115,7 @@ public class TestLoaderNG {
 
   static String [] getHeader(String value) {
     // { "Host": "0.0.0.0=5000"}
-    Pattern p = Pattern.compile("\\{ ?\"([^\"]*)\": ?\"([^\"]*)\"}");
+    Pattern p = Pattern.compile("\\{ ?\"([^\"]*)\": ?\"(.*)\"}");
     Matcher m = p.matcher(value);
     if (!m.matches()) {
       p(value);
@@ -141,7 +141,7 @@ public class TestLoaderNG {
   static byte [] toByteArray (String quotedString) {
     ArrayList<Byte> bytes = new ArrayList<Byte>();
     String s = quotedString.substring(1, quotedString.length()-1);
-    byte [] byts = s.getBytes(java.nio.charset.Charset.forName("ASCII"));
+    byte [] byts = s.getBytes(java.nio.charset.Charset.forName("UTF8"));
     boolean escaped = false;
     for (byte b : byts) {
       switch (b) {
@@ -185,8 +185,10 @@ public class TestLoaderNG {
   public static void main(String [] args) throws Throwable {
     //TestLoaderNG  l = new TestLoaderNG(args[0]);
     List<Message> ts = load(args[0]);
-
     for (Message t : ts) {
+//      for (int i =0; i!= t.raw.length; ++i) {
+//        p(i+":"+t.raw[i]);
+//      }
       t.execute_permutations();
       //	t.execute();
       //	System.exit(0);

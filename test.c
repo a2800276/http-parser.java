@@ -1727,8 +1727,8 @@ create_large_chunked_message (int body_size_in_kb, const char* headers)
 char * 
 quote(const char * orig) {
 	size_t j, i, len = strlen(orig);
-	char * quoted = malloc(len*2); // hm..
-	bzero(quoted, len*2);
+	char * quoted = malloc(len == 0 ? 1 : len*2); // hm..
+	bzero(quoted, len == 0 ? 1 : len*2);
 	for (i=0, j=0; i!=len; ++i) {
 		switch (orig[i]){
 			case '\n':
@@ -1767,27 +1767,33 @@ dump_message(const struct message * m)
 			printf("type  :HTTP_BOTH\n");
 	}
 	switch (m->method) {
-    case HTTP_DELETE:     printf("method: HTTP_DELETE\n");break;
-    case HTTP_GET:        printf("method: HTTP_GET\n");break;
-    case HTTP_HEAD:       printf("method: HTTP_HEAD\n");break;
-    case HTTP_POST:       printf("method: HTTP_POST\n");break;
-    case HTTP_PUT:        printf("method: HTTP_PUT\n");break;
-    case HTTP_CONNECT:    printf("method: HTTP_CONNECT\n");break;
-    case HTTP_OPTIONS:    printf("method: HTTP_OPTIONS\n");break;
-    case HTTP_TRACE:      printf("method: HTTP_TRACE\n");break;
-    case HTTP_COPY:       printf("method: HTTP_COPY\n");break;
-    case HTTP_LOCK:       printf("method: HTTP_LOCK\n");break;
-    case HTTP_MKCOL:      printf("method: HTTP_MKCOL\n");break;
-    case HTTP_MOVE:       printf("method: HTTP_MOVE\n");break;
-    case HTTP_PROPFIND:   printf("method: HTTP_PROPFIND\n");break;
-    case HTTP_PROPPATCH:  printf("method: HTTP_PROPPATCH\n");break;
-    case HTTP_UNLOCK:     printf("method: HTTP_UNLOCK\n");break;
+    case HTTP_DELETE:      printf("method: HTTP_DELETE\n");break;
+    case HTTP_GET:         printf("method: HTTP_GET\n");break;
+    case HTTP_HEAD:        printf("method: HTTP_HEAD\n");break;
+    case HTTP_POST:        printf("method: HTTP_POST\n");break;
+    case HTTP_PUT:         printf("method: HTTP_PUT\n");break;
+    case HTTP_CONNECT:     printf("method: HTTP_CONNECT\n");break;
+    case HTTP_OPTIONS:     printf("method: HTTP_OPTIONS\n");break;
+    case HTTP_TRACE:       printf("method: HTTP_TRACE\n");break;
+    case HTTP_COPY:        printf("method: HTTP_COPY\n");break;
+    case HTTP_LOCK:        printf("method: HTTP_LOCK\n");break;
+    case HTTP_MKCOL:       printf("method: HTTP_MKCOL\n");break;
+    case HTTP_MOVE:        printf("method: HTTP_MOVE\n");break;
+    case HTTP_PROPFIND:    printf("method: HTTP_PROPFIND\n");break;
+    case HTTP_PROPPATCH:   printf("method: HTTP_PROPPATCH\n");break;
+    case HTTP_UNLOCK:      printf("method: HTTP_UNLOCK\n");break;
     /* subversion */
-    case HTTP_REPORT:     printf("method: REPORT\n"); break;
-    case HTTP_MKACTIVITY: printf("method: MKACTIVITY\n"); break;
-    case HTTP_CHECKOUT:   printf("method: CHECKOUT\n"); break;
-    case HTTP_MERGE:      printf("method: MERGE\n"); break;
+    case HTTP_REPORT:      printf("method: HTTP_REPORT\n"); break;
+    case HTTP_MKACTIVITY:  printf("method: HTTP_MKACTIVITY\n"); break;
+    case HTTP_CHECKOUT:    printf("method: HTTP_CHECKOUT\n"); break;
+    case HTTP_MERGE:       printf("method: HTTP_MERGE\n"); break;
+
+    case HTTP_MSEARCH:     printf("method: HTTP_MSEARCH\n"); break;
+    case HTTP_NOTIFY:      printf("method: HTTP_NOTIFY\n"); break;
+    case HTTP_SUBSCRIBE:   printf("method: HTTP_SUBSCRIBE\n"); break;
+    case HTTP_UNSUBSCRIBE: printf("method: HTTP_UNSUBSCRIBE\n"); break;
 		default:
+      printf("method: UNKNOWN\n"); break;
 			break;
 	}
 	printf("status_code :%d\n", m->status_code);
