@@ -95,10 +95,11 @@ public class  HTTPParser {
    * correctly (obviously) and a will be updated approriately when the
    * method returns to reflect the consumed data.
    */
-  public void execute(ParserSettings settings, ByteBuffer data) {
+  public int execute(ParserSettings settings, ByteBuffer data) {
 
     int p     = data.position();
     int p_err = p; // this is used for pretty printing errors.
+    int start_position = p;
 
     // In case the headers don't provide information about the content
     // length, `execute` needs to be called with an empty buffer to
@@ -112,13 +113,13 @@ public class  HTTPParser {
       switch (state) {
         case body_identity_eof:
           settings.call_on_message_complete(this);
-          return;
+          return data.position() - start_position;
 
         case dead:
         case start_res_or_res:
         case start_res:
         case start_req:
-          return;
+          return data.position() - start_position;
 
         default:
           // should we really consider this an error!?
@@ -1273,12 +1274,12 @@ public class  HTTPParser {
         case chunk_size_start:
           if (1 != this.nread) {
             settings.call_on_error(this, "nread != 1 (chunking)", data, p_err);
-            return;
+            return data.position()-start_position;
           
           }
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
-            return;
+            return data.position()-start_position;
           }
 
           c = UNHEX[chi];
@@ -1333,11 +1334,11 @@ public class  HTTPParser {
         case chunk_size_almost_done:
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
-            return;
+            return data.position()-start_position;
           }
           if (strict && LF != ch) {
             settings.call_on_error(this, "expected LF at end of chunk size", data, p_err);
-            return;
+            return data.position()-start_position;
           }
 
           this.nread = 0;
@@ -1417,7 +1418,8 @@ public class  HTTPParser {
     settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
     settings.call_on_path        (this, data, path_mark,         p-path_mark);
     settings.call_on_url         (this, data, url_mark,          p-url_mark);
-	
+    
+    return data.position()-start_position;	
   } // execute
 
   /* If http_should_keep_alive() in the on_headers_complete or
