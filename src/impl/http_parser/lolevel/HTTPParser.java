@@ -514,6 +514,9 @@ public class  HTTPParser {
               url_mark = -1;
               state = State.req_http_start;
               break;
+            case QMARK:
+              state = State.req_query_string_start;
+              break;
             default:
               settings.call_on_error(this, "host error in method line", data, p_err);
           }
@@ -534,6 +537,9 @@ public class  HTTPParser {
               settings.call_on_url(this,data,url_mark,p-url_mark);
               url_mark = -1;
               state = State.req_http_start;
+              break;
+            case QMARK:
+              state = State.req_query_string_start;
               break;
             default:
               settings.call_on_error(this, "invalid port", data, p_err);
@@ -1815,23 +1821,28 @@ public class  HTTPParser {
      true,    true,    true,    true,    true,    true,    true,    true,
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
      true,    true,    true,    true,    true,    true,    true,   false,
-/* hi bit set, not ascii                                                  */
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
-    false,   false,   false,   false,   false,   false,   false,   false,
+
+/*    hi bit set, not ascii                                                  */
+/*    Remainder of non-ASCII range are accepted as-is to support implicitly UTF-8
+ *    encoded paths. This is out of spec, but clients generate this and most other
+ *    HTTP servers support it. We should, too. */
+
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
+     true,    true,    true,    true,    true,    true,    true,    true, 
     
     };
 
