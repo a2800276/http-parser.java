@@ -1,4 +1,4 @@
-/* Copyright 2009,2010 Ryan Dahl <ry@tinyclouds.org>
+/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -186,7 +186,28 @@ static const uint8_t normal_url_char[256] = {
 /* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
         1,       1,       1,       1,       1,       1,       1,       1,
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
-        1,       1,       1,       1,       1,       1,       1,       0 };
+        1,       1,       1,       1,       1,       1,       1,       0,
+
+/* Remainder of non-ASCII range are accepted as-is to support implicitly UTF-8
+   encoded paths. This is out of spec, but clients generate this and most other
+   HTTP servers support it. We should, too. */
+
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1,
+        1,       1,       1,       1,       1,       1,       1,       1 };
 
 
 enum state
@@ -719,6 +740,9 @@ size_t http_parser_execute (http_parser *parser,
             CALLBACK(url);
             state = s_req_http_start;
             break;
+          case '?':
+            state = s_req_query_string_start;
+            break;
           default:
             goto error;
         }
@@ -740,6 +764,9 @@ size_t http_parser_execute (http_parser *parser,
              */
             CALLBACK(url);
             state = s_req_http_start;
+            break;
+          case '?':
+            state = s_req_query_string_start;
             break;
           default:
             goto error;

@@ -1,4 +1,4 @@
-/* Copyright 2009,2010 Ryan Dahl <ry@tinyclouds.org>
+/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -24,6 +24,8 @@
 extern "C" {
 #endif
 
+#define HTTP_PARSER_VERSION_MAJOR 1
+#define HTTP_PARSER_VERSION_MINOR 0
 
 #include <sys/types.h>
 #if defined(_WIN32) && !defined(__MINGW32__)

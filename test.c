@@ -1,4 +1,4 @@
-/* Copyright 2009,2010 Ryan Dahl <ry@tinyclouds.org>
+/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -557,7 +557,7 @@ const struct message requests[] =
   ,.body= ""
   }
 
-#define MSEARCH_REQ 19
+#define MSEARCH_REQ 20
 , {.name= "m-search request"
   ,.type= HTTP_REQUEST
   ,.raw= "M-SEARCH * HTTP/1.1\r\n"
@@ -579,6 +579,84 @@ const struct message requests[] =
              , { "MAN", "\"ssdp:discover\"" }
              , { "ST", "\"ssdp:all\"" }
              }
+  ,.body= ""
+  }
+
+#define UTF8_PATH_REQ 21
+, {.name= "utf-8 path request"
+  ,.type= HTTP_REQUEST
+  ,.raw= "GET /δ¶/δt/pope?q=1#narf HTTP/1.1\r\n"
+         "Host: github.com\r\n"
+         "\r\n"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.method= HTTP_GET
+  ,.query_string= "q=1"
+  ,.fragment= "narf"
+  ,.request_path= "/δ¶/δt/pope"
+  ,.request_url= "/δ¶/δt/pope?q=1#narf"
+  ,.num_headers= 1
+  ,.headers= { {"Host", "github.com" }
+             }
+  ,.body= ""
+  }
+
+#define QUERY_TERMINATED_HOST 22
+, {.name= "host terminated by a query string"
+  ,.type= HTTP_REQUEST
+  ,.raw= "GET http://hypnotoad.org?hail=all HTTP/1.1\r\n"
+         "\r\n"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.method= HTTP_GET
+  ,.query_string= "hail=all"
+  ,.fragment= ""
+  ,.request_path= ""
+  ,.request_url= "http://hypnotoad.org?hail=all"
+  ,.num_headers= 0
+  ,.headers= { }
+  ,.body= ""
+  }
+
+#define QUERY_TERMINATED_HOSTPORT 23
+, {.name= "host:port terminated by a query string"
+  ,.type= HTTP_REQUEST
+  ,.raw= "GET http://hypnotoad.org:1234?hail=all HTTP/1.1\r\n"
+         "\r\n"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.method= HTTP_GET
+  ,.query_string= "hail=all"
+  ,.fragment= ""
+  ,.request_path= ""
+  ,.request_url= "http://hypnotoad.org:1234?hail=all"
+  ,.num_headers= 0
+  ,.headers= { }
+  ,.body= ""
+  }
+
+#define SPACE_TERMINATED_HOSTPORT 24
+, {.name= "host:port terminated by a space"
+  ,.type= HTTP_REQUEST
+  ,.raw= "GET http://hypnotoad.org:1234 HTTP/1.1\r\n"
+         "\r\n"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.method= HTTP_GET
+  ,.query_string= ""
+  ,.fragment= ""
+  ,.request_path= ""
+  ,.request_url= "http://hypnotoad.org:1234"
+  ,.num_headers= 0
+  ,.headers= { }
   ,.body= ""
   }
 
