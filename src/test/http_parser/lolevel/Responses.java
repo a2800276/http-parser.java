@@ -11,45 +11,6 @@ import primitive.collection.ByteList;
 public class Responses {
 
   
-  static void test_multiple3(Message r1, Message r2, Message r3) {
-    int message_count = 1;
-    if (!r1.upgrade) {
-      message_count++;
-      if (!r2.upgrade) {
-        message_count++;
-      }
-    }
-    boolean has_upgrade = (message_count < 3 || r3.upgrade);
-    
-    ByteList blist = new ByteList();
-             blist.addAll(r1.raw);
-             blist.addAll(r2.raw);
-             blist.addAll(r3.raw);
-
-    byte [] raw = blist.toArray();
-    ByteBuffer buf   = ByteBuffer.wrap(raw);
-   
-    Util.Settings settings = Util.settings(); 
-    HTTPParser parser = new HTTPParser(r1.type);
-              parser.execute(settings, buf);
-    if (has_upgrade && parser.upgrade) {
-      check(settings.numCalled == message_count); 
-      return;
-    }
-    
-    check(buf.position() == buf.limit() && buf.position() == raw.length);
-    
-    buf = Util.empty();    
-    parser.execute(settings, buf);
-    if (has_upgrade && parser.upgrade) {
-      check(settings.numCalled == message_count); 
-      return;
-    }
-
-    check(buf.position() == buf.limit() && buf.position() == 0);
-    check(settings.numCalled == message_count); 
-  }  
-  
 
   public static void test () {
     List<Message> all = TestLoaderNG.load("tests.dumped");
@@ -72,7 +33,19 @@ public class Responses {
         }
       }
     }
+
+  // not sure what test_message_count_body does that test_message doesn't...
+  //   Message m = find(responses, "404 no headers no body");
+  //   test_message_count_body(m);
+  //           m = find(responses, "200 trailing space on chunked body");
+  //   test_message_count_body(m);
+
+  // TODO test very large chunked response  
+
+  // test_scan is more or less the same as test_permutations, will implement later...
   }
+
+  
 
 
 }
