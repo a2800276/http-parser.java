@@ -1,3 +1,6 @@
+some tests from test.c left to port
+documentation
+
 hi level callback interface 
 eventloop
 state() as a function (?)
