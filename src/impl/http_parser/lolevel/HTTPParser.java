@@ -22,19 +22,21 @@ public class  HTTPParser {
 	int nread;
 	int content_length;
 
-	
+  int start_position;
+  ByteBuffer data;
+
   /** READ-ONLY **/
-  protected int http_major;
-  protected int http_minor;
-  protected int status_code;   /* responses only */
-  protected HTTPMethod method; /* requests only */
+  public int http_major;
+  public int http_minor;
+  public int status_code;   /* responses only */
+  public HTTPMethod method; /* requests only */
 
   /* true  = Upgrade header was present and the parser has exited because of that.
    * false = No upgrade header present.
    * Should be checked when http_parser_execute() returns in addition to
    * error checking.
    */
-  protected boolean upgrade; 
+  public boolean upgrade; 
 
   /** PUBLIC **/
 	// TODO : this is used in c to maintain application state.
@@ -99,7 +101,9 @@ public class  HTTPParser {
 
     int p     = data.position();
     int p_err = p; // this is used for pretty printing errors.
-    int start_position = p;
+    
+    this.start_position = p;
+    this.data           = data;
 
     // In case the headers don't provide information about the content
     // length, `execute` needs to be called with an empty buffer to
@@ -175,6 +179,7 @@ public class  HTTPParser {
         ++nread;
         if (nread > HTTP_MAX_HEADER_SIZE) {
           settings.call_on_error(this, "possible buffer overflow", data, p_err);
+          return error();
         }
       }
 //p(state + ":" + ch +":"+p);
@@ -185,6 +190,7 @@ public class  HTTPParser {
           */
         case dead:
           settings.call_on_error(this, "Connection already closed", data, p_err);
+          return error();
 
 
 
@@ -204,6 +210,7 @@ public class  HTTPParser {
             method = start_req_method_assign(ch);     
             if (null == method) {
               settings.call_on_error(this, "invalid method", data, p_err);
+              return error();
             }
             index  = 1;
             state  = State.req_method;
@@ -219,6 +226,7 @@ public class  HTTPParser {
           } else {
             if (E != ch) {
               settings.call_on_error(this, "not E", data, p_err);
+              return error();
             }
             type   = ParserType.HTTP_REQUEST;
             method = HTTPMethod.HTTP_HEAD;
@@ -244,6 +252,7 @@ public class  HTTPParser {
               break;
             default:
               settings.call_on_error(this, "Not H or CR/LF", data, p_err);
+              return error();
           }
           break;
 
@@ -252,24 +261,28 @@ public class  HTTPParser {
         case res_H:
           if (strict && T != ch) {
             settings.call_on_error(this, "Not T", data, p_err);
+            return error();
           }
           state = State.res_HT;
           break;
         case res_HT:
           if (strict && T != ch) {
             settings.call_on_error(this, "Not T2", data, p_err);
+            return error();
           }
           state = State.res_HTT;
           break;
         case res_HTT:
           if (strict && P != ch) {
             settings.call_on_error(this, "Not P", data, p_err);
+            return error();
           }
           state = State.res_HTTP;
           break;
         case res_HTTP:
           if (strict && SLASH != ch) {
             settings.call_on_error(this, "Not '/'", data, p_err);
+            return error();
           }
           state = State.res_first_http_major;
           break;
@@ -279,6 +292,7 @@ public class  HTTPParser {
         case res_first_http_major:
           if (!isDigit(ch)) {
             settings.call_on_error(this, "Not a digit", data, p_err);
+            return error();
           }
           http_major = (int) ch - 0x30;
           state = State.res_http_major;
@@ -292,12 +306,14 @@ public class  HTTPParser {
           }
           if (!isDigit(ch)) {
             settings.call_on_error(this, "Not a digit", data, p_err);
+            return error();
           }
           http_major *= 10;
           http_major += (ch - 0x30);
 
           if (http_major > 999) {
             settings.call_on_error(this, "invalid http major version: "+http_major, data, p_err);
+            return error();
           }
           break;
           
@@ -305,6 +321,7 @@ public class  HTTPParser {
         case res_first_http_minor:
           if (!isDigit(ch)) {
             settings.call_on_error(this, "Not a digit", data, p_err);
+            return error();
           }
           http_minor = (int)ch - 0x30;
           state = State.res_http_minor;
@@ -318,11 +335,13 @@ public class  HTTPParser {
           }
           if (!isDigit(ch)) {
             settings.call_on_error(this, "Not a digit", data, p_err);
+            return error();
           }
           http_minor *= 10;
           http_minor += (ch - 0x30);
           if (http_minor > 999) {
             settings.call_on_error(this, "invalid http minor version: "+http_minor, data, p_err);
+            return error();
           }
           break;
 
@@ -334,6 +353,7 @@ public class  HTTPParser {
               break;
             }
             settings.call_on_error(this, "Not a digit (status code)", data, p_err);
+            return error();
           }
           status_code = (int)ch - 0x30;
           state = State.res_status_code;
@@ -353,6 +373,7 @@ public class  HTTPParser {
                 break;
               default:
                 settings.call_on_error(this, "not a valid status code", data, p_err);
+                return error();
             }
             break;
           }
@@ -360,6 +381,7 @@ public class  HTTPParser {
           status_code += (int)ch - 0x30;
           if (status_code > 999) {
             settings.call_on_error(this, "ridiculous status code:"+status_code, data, p_err);
+            return error();
           }
           break;
 
@@ -381,6 +403,7 @@ public class  HTTPParser {
         case res_line_almost_done:
           if (strict && LF != ch) {
             settings.call_on_error(this, "not LF", data, p_err);
+            return error();
           }
           state = State.header_field_start;
           break;
@@ -397,6 +420,7 @@ public class  HTTPParser {
           method = start_req_method_assign(ch);
           if (null == method) {
             settings.call_on_error(this, "invalid method", data, p_err);
+            return error();
           }
           index  = 1;
           state  = State.req_method;
@@ -407,6 +431,7 @@ public class  HTTPParser {
         case req_method:
           if (0 == ch) {
             settings.call_on_error(this, "NULL in method", data, p_err);
+            return error();
           }
           
           byte [] arr = method.bytes;
@@ -441,6 +466,7 @@ public class  HTTPParser {
             method = HTTPMethod.HTTP_PROPPATCH;
           } else {
             settings.call_on_error(this, "Invalid HTTP method", data, p_err);
+            return error();
           }
 
           ++index;
@@ -465,6 +491,7 @@ public class  HTTPParser {
             break;
           }
           settings.call_on_error(this, "Invalid something", data, p_err);
+          return error();
 
         case req_schema:
           if (isAtoZ(ch)){
@@ -478,10 +505,12 @@ public class  HTTPParser {
             break;
           }
           settings.call_on_error(this, "invalid char in schema: "+ch, data, p_err);
+          return error();
 
         case req_schema_slash:
           if (strict && SLASH != ch) {
             settings.call_on_error(this, "invalid char in schema, not /", data, p_err);
+            return error();
           }
           state = State.req_schema_slash_slash;
           break;
@@ -489,6 +518,7 @@ public class  HTTPParser {
         case req_schema_slash_slash:
           if (strict && SLASH != ch) {
             settings.call_on_error(this, "invalid char in schema, not /", data, p_err);
+            return error();
           }
           state = State.req_host;
           break;
@@ -519,6 +549,7 @@ public class  HTTPParser {
               break;
             default:
               settings.call_on_error(this, "host error in method line", data, p_err);
+              return error();
           }
           break;
 
@@ -543,6 +574,7 @@ public class  HTTPParser {
               break;
             default:
               settings.call_on_error(this, "invalid port", data, p_err);
+              return error();
           }
           break;
       
@@ -597,6 +629,7 @@ public class  HTTPParser {
             
             default:
               settings.call_on_error(this, "unexpected char in path", data, p_err);
+              return error();
           }
           break;
       
@@ -631,6 +664,7 @@ public class  HTTPParser {
               break;
             default:
               settings.call_on_error(this, "unexpected char in path", data, p_err);
+              return error();
           }
           break;
         
@@ -678,6 +712,7 @@ public class  HTTPParser {
               break;
             default:
               settings.call_on_error(this, "unexpected char in path", data, p_err);
+              return error();
           }
           break;
 
@@ -717,6 +752,7 @@ public class  HTTPParser {
               break;
             default:
               settings.call_on_error(this, "unexpected char in path", data, p_err);
+              return error();
           }
           break;
 
@@ -760,6 +796,7 @@ public class  HTTPParser {
               break;
             default:
               settings.call_on_error(this, "unexpected char in path", data, p_err);
+              return error();
           }
           break;
         /******************* URL *******************/
@@ -776,12 +813,14 @@ public class  HTTPParser {
               break;
             default:
               settings.call_on_error(this, "error in req_http_H", data, p_err);
+              return error();
           }
           break;
 
         case req_http_H:
           if (strict && T != ch) {
             settings.call_on_error(this, "unexpected char", data, p_err);
+            return error();
           }
           state = State.req_http_HT;
           break;
@@ -789,6 +828,7 @@ public class  HTTPParser {
         case req_http_HT:
           if (strict && T != ch) {
             settings.call_on_error(this, "unexpected char", data, p_err);
+            return error();
           }
           state = State.req_http_HTT;
           break;
@@ -796,6 +836,7 @@ public class  HTTPParser {
         case req_http_HTT:
           if (strict && P != ch) {
             settings.call_on_error(this, "unexpected char", data, p_err);
+            return error();
           }
           state = State.req_http_HTTP;
           break;
@@ -803,6 +844,7 @@ public class  HTTPParser {
         case req_http_HTTP:
           if (strict && SLASH != ch) {
             settings.call_on_error(this, "unexpected char", data, p_err);
+            return error();
           }
           state = req_first_http_major;
           break;
@@ -811,6 +853,7 @@ public class  HTTPParser {
         case req_first_http_major:
           if (!isDigit(ch)) {
             settings.call_on_error(this, "non digit in http major", data, p_err);
+            return error();
           }
           http_major = (int)ch - 0x30;
           state = State.req_http_major;
@@ -825,6 +868,7 @@ public class  HTTPParser {
 
           if (!isDigit(ch)) {
             settings.call_on_error(this, "non digit in http major", data, p_err);
+            return error();
           }
 
           http_major *= 10;
@@ -832,6 +876,7 @@ public class  HTTPParser {
 
           if (http_major > 999) {
             settings.call_on_error(this, "ridiculous http major", data, p_err);
+            return error();
           };
           break;
         
@@ -839,6 +884,7 @@ public class  HTTPParser {
         case req_first_http_minor:
           if (!isDigit(ch)) {
             settings.call_on_error(this, "non digit in http minor", data, p_err);
+            return error();
           }
           http_minor = (int)ch - 0x30;
           state = State.req_http_minor;
@@ -859,6 +905,7 @@ public class  HTTPParser {
 
           if (!isDigit(ch)) {
             settings.call_on_error(this, "non digit in http minor", data, p_err);
+            return error();
           }
 
           http_minor *= 10;
@@ -867,6 +914,7 @@ public class  HTTPParser {
          
           if (http_minor > 999) {
             settings.call_on_error(this, "ridiculous http minor", data, p_err);
+            return error();
           };
    
           break;
@@ -876,6 +924,7 @@ public class  HTTPParser {
         {
           if (ch != LF) {
             settings.call_on_error(this, "missing LF after request line", data, p_err);
+            return error();
           }
           state = State.header_field_start;
           break;
@@ -899,6 +948,7 @@ public class  HTTPParser {
             state = State.headers_almost_done;
             if (!headers_almost_done(ch, settings)) {
               settings.call_on_error(this, "header not properly completed", data, p_err);
+              return error();
             }
             if (upgrade) {
               return data.position() - start_position;
@@ -910,6 +960,7 @@ public class  HTTPParser {
 
           if (0 == c) {
             settings.call_on_error(this, "invalid char in header:"+c, data, p_err);
+            return error();
           };
 
           header_field_mark = p;
@@ -1040,6 +1091,7 @@ public class  HTTPParser {
 
               default:
                 settings.call_on_error(this, "Unknown Header State", data, p_err);
+                return error();
             } // switch: header_state
             break;
           } // 0 != c
@@ -1069,6 +1121,7 @@ public class  HTTPParser {
           }
 
           settings.call_on_error(this, "invalid header field", data, p_err);
+          return error();
         }
 
 
@@ -1121,6 +1174,7 @@ public class  HTTPParser {
             case content_length:
               if (!isDigit(ch)) {
                 settings.call_on_error(this, "Content-Length not numeric", data, p_err);
+                return error();
               } 
               content_length = (int)ch - 0x30;
               break;
@@ -1163,6 +1217,7 @@ public class  HTTPParser {
             
             if (!header_almost_done(ch)) {
               settings.call_on_error(this,"incorrect header ending, expection LF", data, p_err);
+              return error();
             }
             break;
           }
@@ -1175,6 +1230,7 @@ public class  HTTPParser {
             case connection:
             case transfer_encoding:
               settings.call_on_error(this, "Shouldn't be here", data, p_err);
+              return error();
 
             case content_length:
               if (SPACE == ch) {
@@ -1182,6 +1238,7 @@ public class  HTTPParser {
               }
               if (!isDigit(ch)) {
                 settings.call_on_error(this, "Content-Length not numeric", data, p_err);
+                return error();
               } 
 
               content_length *= 10;
@@ -1237,12 +1294,14 @@ public class  HTTPParser {
         case header_almost_done:
           if (!header_almost_done(ch)) {
             settings.call_on_error(this,"incorrect header ending, expection LF", data, p_err);
+            return error();
           }
           break;
 
         case headers_almost_done:
           if (!headers_almost_done(ch, settings)) {
             settings.call_on_error(this, "header not properly completed", data, p_err);
+            return error();
           }
           if (upgrade) {
             return data.position()-start_position ;
@@ -1286,17 +1345,18 @@ public class  HTTPParser {
         case chunk_size_start:
           if (1 != this.nread) {
             settings.call_on_error(this, "nread != 1 (chunking)", data, p_err);
-            return data.position()-start_position;
+            return error();
           
           }
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
-            return data.position()-start_position;
+            return error();
           }
 
           c = UNHEX[chi];
           if (c == -1) {
             settings.call_on_error(this, "invalid hex char in chunk content length", data, p_err);
+            return error();
           }
           content_length = c;
           state = State.chunk_size;
@@ -1307,6 +1367,7 @@ public class  HTTPParser {
         case chunk_size:
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
+            return error();
           }
 
           if (CR == ch) {
@@ -1322,6 +1383,7 @@ public class  HTTPParser {
               break;
             }
             settings.call_on_error(this, "invalid hex char in chunk content length", data, p_err);
+            return error();
           }
 
           content_length *= 16;
@@ -1333,6 +1395,7 @@ public class  HTTPParser {
         case chunk_parameters:
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
+            return error();
           }
           /* just ignore this shit. TODO check for overflow */
           if (CR == ch) {
@@ -1346,11 +1409,11 @@ public class  HTTPParser {
         case chunk_size_almost_done:
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
-            return data.position()-start_position;
+            return error();
           }
           if (strict && LF != ch) {
             settings.call_on_error(this, "expected LF at end of chunk size", data, p_err);
-            return data.position()-start_position;
+            return error();
           }
 
           this.nread = 0;
@@ -1369,6 +1432,7 @@ public class  HTTPParser {
         {
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
+            return error();
           }
 
           to_read = min(pe-p, content_length);
@@ -1390,9 +1454,11 @@ public class  HTTPParser {
         case chunk_data_almost_done:
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
+            return error();
           }
           if (strict && CR != ch) {
             settings.call_on_error(this, "chunk data terminated incorrectly, expected CR", data, p_err);
+            return error();
           }
           state = State.chunk_data_done;
           break;
@@ -1402,9 +1468,11 @@ public class  HTTPParser {
         case chunk_data_done:
           if (0 == (flags & F_CHUNKED)) {
             settings.call_on_error(this, "not chunked", data, p_err);
+            return error();
           }
           if (strict && LF != ch) {
             settings.call_on_error(this, "chunk data terminated incorrectly, expected LF", data, p_err);
+            return error();
           }
           state = State.chunk_size_start;
           break;
@@ -1414,6 +1482,7 @@ public class  HTTPParser {
         
         default:
           settings.call_on_error(this, "unhandled state", data, p_err);
+          return error();
           
       } // switch
     } // while
@@ -1433,6 +1502,11 @@ public class  HTTPParser {
     
     return data.position()-start_position;	
   } // execute
+
+  int error () {
+    this.state = State.dead;
+    return this.data.position()-start_position;
+  }
 
   /* If http_should_keep_alive() in the on_headers_complete or
    * on_message_complete callback returns true, then this will be should be

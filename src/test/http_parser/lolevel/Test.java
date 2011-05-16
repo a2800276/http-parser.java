@@ -9,6 +9,7 @@ public class Test {
     Responses.test();
     //Requests.test();
     Upgrade.test();
+    WrongContentLength.test();
   }
 
 }

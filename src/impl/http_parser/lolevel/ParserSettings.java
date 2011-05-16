@@ -33,6 +33,7 @@ public class ParserSettings {
   void call_on_error (HTTPParser p, String mes, ByteBuffer buf, int ini_pos) {
     if (null != on_error) {
       on_error.cb(p, mes, buf, ini_pos);
+      return;
     }
     // if on_error gets called it MUST throw an exception, else the parser 
     // will attempt to continue parsing, which it can't because it's
