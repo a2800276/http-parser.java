@@ -177,7 +177,7 @@ public class  HTTPParser {
           settings.call_on_error(this, "possible buffer overflow", data, p_err);
         }
       }
-p(state + ":" + ch +":"+p);
+//p(state + ":" + ch +":"+p);
       switch (state) {
          /*
           * this state is used after a 'Connection: close' message
@@ -547,8 +547,6 @@ p(state + ":" + ch +":"+p);
           break;
       
         case req_path:
-          p(chi);
-          p(normal_url_char[chi]);
           if (normal_url_char[chi]) break;
           switch (ch) {
             case SPACE:
@@ -902,6 +900,9 @@ p(state + ":" + ch +":"+p);
             if (!headers_almost_done(ch, settings)) {
               settings.call_on_error(this, "header not properly completed", data, p_err);
             }
+            if (upgrade) {
+              return data.position() - start_position;
+            }
             break;
           }
 
@@ -1242,6 +1243,9 @@ p(state + ":" + ch +":"+p);
         case headers_almost_done:
           if (!headers_almost_done(ch, settings)) {
             settings.call_on_error(this, "header not properly completed", data, p_err);
+          }
+          if (upgrade) {
+            return data.position()-start_position ;
           }
           break;
 

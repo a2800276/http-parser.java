@@ -10,6 +10,8 @@ import http_parser.lolevel.TestLoaderNG.TestSettings;
 import http_parser.lolevel.TestLoaderNG.Header;
 import http_parser.lolevel.TestLoaderNG.LastHeader;
 
+import static http_parser.lolevel.Util.str;
+
 public class Message {
   String name; 
   byte [] raw; 
@@ -84,14 +86,6 @@ public class Message {
     }
   }
 
-  String str (ByteBuffer b, int pos, int len) {
-    byte [] by = new byte[len];
-    int saved = b.position();
-    b.position(pos);
-    b.get(by);
-    b.position(saved);
-    return new String(by);
-  }
 
   HTTPDataCallback getCB (final String value, final String mes, final TestSettings settings) {
     return new HTTPDataCallback() {

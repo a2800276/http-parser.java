@@ -11,6 +11,23 @@ public class Util {
 
   static final ParserSettings SETTINGS_NULL = new ParserSettings();
 
+  static String str (ByteBuffer b, int pos, int len) {
+    byte [] by = new byte[len];
+    int saved = b.position();
+    b.position(pos);
+    b.get(by);
+    b.position(saved);
+    return new String(by);
+  }
+  static String str (ByteBuffer b) {
+    int len = b.limit() - b.position(); 
+    byte [] by = new byte[len];
+    int saved = b.position();
+    b.get(by);
+    b.position(saved);
+    return new String(by);
+  }
+
   static ByteBuffer buffer(String str) {
     return ByteBuffer.wrap(str.getBytes());
   }
