@@ -189,7 +189,11 @@ public class TestLoaderNG {
 //      for (int i =0; i!= t.raw.length; ++i) {
 //        p(i+":"+t.raw[i]);
 //      }
+      try {
       t.execute_permutations();
+      } catch (Throwable th) {
+        p("failed: "+t.name);
+      }
       //	t.execute();
       //	System.exit(0);
     }
