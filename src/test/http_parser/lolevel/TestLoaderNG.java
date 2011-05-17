@@ -209,15 +209,4 @@ public class TestLoaderNG {
       ,VALUE
   }
 
-  static class TestSettings extends ParserSettings {
-    public boolean success;
-    Map<String, String> map;
-    TestSettings () {
-      map = new HashMap<String, String>();
-      map.put("path", "");
-      map.put("query_string", "");
-      map.put("url", "");
-      map.put("fragment", "");
-    }
-  }
 }

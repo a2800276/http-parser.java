@@ -6,9 +6,10 @@ import java.util.*;
 
 import http_parser.HTTPMethod;
 import http_parser.ParserType;
-import http_parser.lolevel.TestLoaderNG.TestSettings;
 import http_parser.lolevel.TestLoaderNG.Header;
 import http_parser.lolevel.TestLoaderNG.LastHeader;
+
+import primitive.collection.ByteList;
 
 import static http_parser.lolevel.Util.str;
 
@@ -97,9 +98,12 @@ public class Message {
         //      //throw new RuntimeException(name);
         //    }
         //   }
-        String str      = str(b, pos, len);
-        String prev_val = settings.map.get(mes);
-        settings.map.put(mes, prev_val + str);
+        //String str    = str(b, pos, len);
+        ByteList list = settings.map.get(mes);
+        for (int i=0; i!=len; ++i) {
+          list.add(b.get(pos+i));
+        }
+        //settings.map.put(mes, prev_val + str);
         //check(value.equals(str), "incorrect "+mes+": "+str);
         if (-1 == pos) {
           throw new RuntimeException("he?");
@@ -209,10 +213,19 @@ public class Message {
     s.on_headers_complete = new HTTPCallback() {
       public int cb (HTTPParser p) {
         headers_complete_called = true;
-        String parsed_path  = s.map.get("path");
-        String parsed_query = s.map.get("query_string");
-        String parsed_url   = s.map.get("url");
-        String parsed_frag  = s.map.get("fragment");
+        String parsed_path  = null;
+        String parsed_query = null;
+        String parsed_url   = null;
+        String parsed_frag  = null;
+        
+        try {
+          parsed_path  = new String(s.map.get("path").toArray(),         "UTF8");
+          parsed_query = new String(s.map.get("query_string").toArray(), "UTF8");
+          parsed_url   = new String(s.map.get("url").toArray(),          "UTF8");
+          parsed_frag  = new String(s.map.get("fragment").toArray(),     "UTF8");
+        } catch (java.io.UnsupportedEncodingException uee) {
+          throw new RuntimeException(uee);
+        }
 
         if (!request_path.equals(parsed_path)) {
           throw new RuntimeException(name+": invalid path: "+parsed_path+" should be: "+request_path);
@@ -320,5 +333,17 @@ public class Message {
   } // settings
   static void p(Object o) {
     System.out.println(o);
+  }
+
+  static class TestSettings extends ParserSettings {
+    public boolean success;
+    Map<String, ByteList> map;
+    TestSettings () {
+      map = new HashMap<String, ByteList>();
+      map.put("path",         new ByteList());
+      map.put("query_string", new ByteList());
+      map.put("url",          new ByteList());
+      map.put("fragment",     new ByteList());
+    }
   }
 }
