@@ -1485,7 +1485,11 @@ return error(settings, "unhandled state", data);
   }
 
   byte token(byte b) {
-    return (byte)tokens[b];
+    if(!strict){
+        return (b == (byte)' ') ? (byte)' ' : (byte)tokens[b] ;
+    }else{
+        return (byte)tokens[b];
+    }
   }
 	
 
@@ -1738,9 +1742,9 @@ return error(settings, "unhandled state", data);
 /*  24 can   25 em    26 sub   27 esc   28 fs    29 gs    30 rs    31 us  */
         0,       0,       0,       0,       0,       0,       0,       0,
 /*  32 sp    33  !    34  "    35  #    36  $    37  %    38  &    39  '  */
-       ' ',     '!',     '"',     '#',     '$',     '%',     '&',    '\'',
+        0,     '!',       0,     '#',     '$',     '%',     '&',    '\'',
 /*  40  (    41  )    42  *    43  +    44  ,    45  -    46  .    47  /  */
-        0,       0,      '*',     '+',       0,     '-',     '.',     '/' ,
+        0,       0,      '*',     '+',       0,     '-',     '.',     0 ,
 /*  48  0    49  1    50  2    51  3    52  4    53  5    54  6    55  7  */
        '0',     '1',     '2',     '3',     '4',     '5',     '6',     '7',
 /*  56  8    57  9    58  :    59  ;    60  <    61  =    62  >    63  ?  */
@@ -1760,7 +1764,7 @@ return error(settings, "unhandled state", data);
 /* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
        'P',     'Q',     'R',     'S',     'T',     'U',     'V',     'W',
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
-       'X',     'Y',     'Z',      0,      '|',     '}',      0,       0,
+       'X',     'Y',     'Z',      0,      '|',      0,      '~',       0,
 /* hi bit set, not ascii                                                  */
         0,       0,       0,       0,       0,       0,       0,       0,
         0,       0,       0,       0,       0,       0,       0,       0,

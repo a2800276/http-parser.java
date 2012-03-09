@@ -51,7 +51,7 @@ public class Util {
 
       HTTPParser parser = new HTTPParser(mes.type);
       ParserSettings settings = mes.settings();
-      
+
       int read = 0;
       if (msg1len !=0) {
         read = parser.execute(settings, msg1);
