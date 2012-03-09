@@ -28,7 +28,8 @@ public enum HTTPMethod {
   , HTTP_NOTIFY("NOTIFY")
   , HTTP_SUBSCRIBE("SUBSCRIBE")
   , HTTP_UNSUBSCRIBE("UNSUBSCRIBE")
-  
+  , HTTP_PATCH("PATCH")
+  , HTTP_PURGE("PURGE")
   ;
 
   private static Charset ASCII;
@@ -93,6 +94,8 @@ public enum HTTPMethod {
     else if ("SUBSCRIBE".equalsIgnoreCase(s))        {return HTTP_SUBSCRIBE;}
     else if ("HTTP_UNSUBSCRIBE".equalsIgnoreCase(s)) {return HTTP_UNSUBSCRIBE;}
     else if ("UNSUBSCRIBE".equalsIgnoreCase(s))      {return HTTP_UNSUBSCRIBE;}
+    else if ("PATCH".equalsIgnoreCase(s))            {return HTTP_PATCH;}
+    else if ("PURGE".equalsIgnoreCase(s))            {return HTTP_PURGE;}
 	  else                                             {return null;}
 	}	
   void init (String name) {
