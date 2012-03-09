@@ -1678,6 +1678,7 @@ return error(settings, "unhandled state", data);
 			case chunk_data_done :
 			case body_identity :
 			case body_identity_eof :
+      case message_done :
 				return false;
 
 		}
@@ -1919,7 +1920,12 @@ return error(settings, "unhandled state", data);
     , req_schema
     , req_schema_slash
     , req_schema_slash_slash
+    , req_host_start
+    , req_host_v6_start
+    , req_host_v6
+    , req_host_v6_end
     , req_host
+    , req_port_start
     , req_port
     , req_path
     , req_query_string_start
@@ -1941,6 +1947,7 @@ return error(settings, "unhandled state", data);
     , header_field
     , header_value_start
     , header_value
+    , header_value_lws
 
     , header_almost_done
 
@@ -1950,10 +1957,11 @@ return error(settings, "unhandled state", data);
     , chunk_size_almost_done
 
     , headers_almost_done
+    , headers_done
 // This space intentionally not left blank, comment from c, for orientation...
 // the c version uses <= s_header_almost_done in java, we list the states explicitly
 // in `parsing_header()`
-/* Important: 's_headers_almost_done' must be the last 'header' state. All
+/* Important: 's_headers_done' must be the last 'header' state. All
  * states beyond this must be 'body' states. It is used for overflow
  * checking. See the PARSING_HEADER() macro.
  */
@@ -1962,8 +1970,8 @@ return error(settings, "unhandled state", data);
     , chunk_data_done
 
     , body_identity
-    , body_identity_eof;
-
+    , body_identity_eof
+    , message_done
 
   }
   enum HState {
