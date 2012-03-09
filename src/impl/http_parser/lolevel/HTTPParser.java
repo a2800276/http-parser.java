@@ -51,10 +51,8 @@ public class  HTTPParser {
    */
   int header_field_mark = -1;
   int header_value_mark = -1;
-  int fragment_mark = -1;
-  int query_string_mark = -1;
-  int path_mark = -1;
   int url_mark = -1;
+  int body_mark = -1;
 	
   /**
    * Construct a Parser for ParserType.HTTP_BOTH, meaning it
@@ -78,7 +76,7 @@ public class  HTTPParser {
 				this.state = State.start_res;
 				break;
 			case HTTP_BOTH:
-				this.state = State.start_res_or_res;
+				this.state = State.start_req_or_res;
 				break;
 			default:
 				throw new HTTPException("can't happen, invalid ParserType enum");
@@ -90,6 +88,169 @@ public class  HTTPParser {
    */
 	static void p(Object o) {System.out.println(o);}
 
+  /** Comment from C version follows
+   *
+   * Our URL parser.
+   *
+   * This is designed to be shared by http_parser_execute() for URL validation,
+   * hence it has a state transition + byte-for-byte interface. In addition, it
+   * is meant to be embedded in http_parser_parse_url(), which does the dirty
+   * work of turning state transitions URL components for its API.
+   *
+   * This function should only be invoked with non-space characters. It is
+   * assumed that the caller cares about (and can detect) the transition between
+   * URL and non-URL states by looking for these.
+   */
+  public State parse_url_char(byte ch) {
+    if(SPACE == ch){
+      throw new HTTPException("space as url char");
+    }
+
+    switch(state) {
+      case req_spaces_before_url:
+        /* Proxied requests are followed by scheme of an absolute URI (alpha).
+        * All methods except CONNECT are followed by '/' or '*'.
+        */
+        if(SLASH == ch || STAR == ch){
+          return req_path;
+        }
+        if(isAtoZ(ch)){
+          return req_schema;
+        }
+        break;
+      case req_schema:
+        if(isAtoZ(ch)){
+          return req_schema;
+        }
+        if(SEMI == ch){
+          return req_schema_slash;
+        }
+        break;
+      case req_schema_slash:
+        if(SLASH == ch){
+          return req_schema_slash_slash;
+        }
+        break;
+      case req_schema_slash_slash:
+        if(SLASH == ch){
+          return req_host_start;
+        }
+        break;
+      case req_host_start:
+        if (ch == (byte)'[') {
+          return req_host_v6_start;
+        }
+        if (isHostChar(ch)) {
+          return req_host;
+        }
+        break;
+
+      case req_host:
+        if (isHostChar(ch)) {
+          return req_host;
+        }
+
+      /* FALLTHROUGH */
+      case req_host_v6_end:
+        switch (ch) {
+          case ':':
+            return req_port_start;
+          case '/':
+            return req_path;
+          case '?':
+            return req_query_string_start;
+        }
+        break;
+
+      case req_host_v6:
+        if (ch == ']') {
+          return req_host_v6_end;
+        }
+
+      /* FALLTHROUGH */
+      case req_host_v6_start:
+        if (isHex(ch) || ch == ':') {
+          return req_host_v6;
+        }
+        break;
+
+      case req_port:
+        switch (ch) {
+          case '/':
+            return req_path;
+          case '?':
+            return req_query_string_start;
+        }
+
+      /* FALLTHROUGH */
+      case req_port_start:
+        if (isDigit(ch)) {
+          return req_port;
+        }
+        break;
+
+      case req_path:
+        if (isNormalUrlChar(ch)) {
+          return req_path;
+        }
+        switch (ch) {
+          case '?':
+            return req_query_string_start;
+          case '#':
+            return req_fragment_start;
+        }
+
+        break;
+
+      case req_query_string_start:
+      case req_query_string:
+        if (isNormalUrlChar(ch)) {
+          return req_query_string;
+        }
+
+        switch (ch) {
+          case '?':
+            /* allow extra '?' in query string */
+            return req_query_string;
+
+          case '#':
+            return req_fragment_start;
+        }
+
+        break;
+
+      case req_fragment_start:
+        if (isNormalUrlChar(ch)) {
+          return req_fragment;
+        }
+        switch (ch) {
+          case '?':
+            return req_fragment;
+
+          case '#':
+            return req_fragment_start;
+        }
+        break;
+
+      case req_fragment:
+        if (isNormalUrlChar(ch)) {
+          return req_fragment;
+        }
+
+        switch (ch) {
+          case '?':
+          case '#':
+            return req_fragment;
+        }
+
+        break;
+      default:
+        break;
+    }
+
+    /* We should never fall out of the switch above unless there's an error */
+    return dead;
+  }
 
   /** Execute the parser with the currently available data contained in
    * the buffer. The buffers position() and limit() need to be set
@@ -118,7 +279,7 @@ public class  HTTPParser {
           return data.position() - this.p_start;
 
         case dead:
-        case start_res_or_res:
+        case start_req_or_res:
         case start_res:
         case start_req:
           return data.position() - this.p_start;
@@ -140,28 +301,24 @@ public class  HTTPParser {
       case header_value:
         header_value_mark = p;
         break;
-      case req_fragment:
-        fragment_mark = p;
-        url_mark = p;
-        break;
-      case req_query_string:
-        query_string_mark = p;
-        url_mark = p;
-        break;
       case req_path:
-        path_mark = p;
-
-      case req_host:
       case req_schema:
       case req_schema_slash:
       case req_schema_slash_slash:
+      case req_host_start:
+      case req_host_v6_start:
+      case req_host_v6:
+      case req_host_v6_end:
+      case req_host:
+      case req_port_start:
       case req_port:
       case req_query_string_start:
+      case req_query_string:
       case req_fragment_start:
+      case req_fragment:
         url_mark = p;
         break;
     }
-
     // this is where the work gets done, traverse the available data...
     while (data.position() != data.limit()) {
 
@@ -179,30 +336,32 @@ public class  HTTPParser {
           return error(settings, "possible buffer overflow", data);
         }
       }
-//p(state + ":" + ch +":"+p);
+//      p(state + ":" + (char)ch +":"+p);
       switch (state) {
          /*
           * this state is used after a 'Connection: close' message
           * the parser will error out if it reads another message
           */
         case dead:
+          if (CR == ch || LF == ch){
+            break;
+          }
           return error(settings, "Connection already closed", data);
 
 
 
-        case start_res_or_res:
+        case start_req_or_res:
           if (CR == ch || LF == ch){
             break;
           }
           flags = 0;
           content_length = -1;
 
-          settings.call_on_message_begin(this);
-          
-          if (H == ch) { 
+          if (H == ch) {
             state = State.res_or_resp_H;
+            settings.call_on_message_begin(this);
           } else {
-            type   = ParserType.HTTP_REQUEST;  
+            type   = ParserType.HTTP_REQUEST;
             method = start_req_method_assign(ch);     
             if (null == method) {
               return error(settings, "invalid method", data);
@@ -235,8 +394,6 @@ public class  HTTPParser {
           flags = 0;
           content_length = -1;
 
-          settings.call_on_message_begin(this);
-          
           switch(ch) {
             case H:
               state = State.res_H;
@@ -247,6 +404,8 @@ public class  HTTPParser {
             default:
               return error(settings, "Not H or CR/LF", data);
           }
+
+          settings.call_on_message_begin(this);
           break;
 
 
@@ -395,20 +554,26 @@ return error(settings, "not LF", data);
           }
           flags = 0;
           content_length = -1;
-          settings.call_on_message_begin(this);
+
+          if(!isAtoZ(ch)){
+            return error(settings, "invalid method", data);
+          }
+
           method = start_req_method_assign(ch);
           if (null == method) {
-return error(settings, "invalid method", data);
+            return error(settings, "invalid method", data);
           }
           index  = 1;
           state  = State.req_method;
+
+          settings.call_on_message_begin(this);
           break;
         
 
 
         case req_method:
           if (0 == ch) {
-return error(settings, "NULL in method", data);
+            return error(settings, "NULL in method", data);
           }
           
           byte [] arr = method.bytes;
@@ -433,16 +598,28 @@ return error(settings, "NULL in method", data);
               } else if (2 == index && A == ch) {
                 method = HTTPMethod.HTTP_MKACTIVITY;
               }
-          } else if (1 == index && HTTPMethod.HTTP_POST     == method && R == ch) {
-            method = HTTPMethod.HTTP_PROPFIND;
-          } else if (1 == index && HTTPMethod.HTTP_POST     == method && U == ch) {
-            method = HTTPMethod.HTTP_PUT;
-          } else if (2 == index && HTTPMethod.HTTP_UNLOCK   == method && S == ch) {
-            method = HTTPMethod.HTTP_UNSUBSCRIBE;
-          } else if (4 == index && HTTPMethod.HTTP_PROPFIND == method && P == ch) {
+          } else if (1 == index && HTTPMethod.HTTP_POST     == method) {
+            if(R == ch) {
+              method = HTTPMethod.HTTP_PROPFIND; /* or HTTP_PROPPATCH */
+            }else if(U == ch){
+              method = HTTPMethod.HTTP_PUT; /* or HTTP_PURGE */
+            }else if(A == ch){
+              method = HTTPMethod.HTTP_PATCH;
+            }
+          } else if (2 == index) {
+            if(HTTPMethod.HTTP_PUT == method) {
+              if(R == ch){
+                method = HTTPMethod.HTTP_PURGE; 
+              }
+            }else if(HTTPMethod.HTTP_UNLOCK == method){
+              if(S == ch){
+                method = HTTPMethod.HTTP_UNSUBSCRIBE;
+              }
+            }
+          }else if(4 == index && HTTPMethod.HTTP_PROPFIND == method && P == ch){
             method = HTTPMethod.HTTP_PROPPATCH;
           } else {
-return error(settings, "Invalid HTTP method", data);
+            return error(settings, "Invalid HTTP method", data);
           }
 
           ++index;
@@ -455,312 +632,66 @@ return error(settings, "Invalid HTTP method", data);
           if (SPACE == ch) {
             break;
           }
-          if (SLASH == ch || STAR == ch) {
-            url_mark  = p;
-            path_mark = p;
-            state = State.req_path;
-            break;
+          url_mark  = p;
+          if(HTTPMethod.HTTP_CONNECT == method){
+            state = req_host_start;
           }
-          if (isAtoZ(ch)) {
-            url_mark = p;
-            state = State.req_schema;
-            break;
+
+          state = parse_url_char(ch);
+          if(state == dead){
+            return error(settings, "Invalid something", data);
           }
-return error(settings, "Invalid something", data);
+          break;
+
 
         case req_schema:
-          if (isAtoZ(ch)){
-            break;
-          }
-          if (COLON == ch) {
-            state = State.req_schema_slash;
-            break;
-          } else if (DOT == ch || isDigit(ch)) {
-            state = State.req_host;
-            break;
-          }
-return error(settings, "invalid char in schema: ", data);
-
         case req_schema_slash:
-          if (strict && SLASH != ch) {
-return error(settings, "invalid char in schema, not /", data);
-          }
-          state = State.req_schema_slash_slash;
-          break;
-
         case req_schema_slash_slash:
-          if (strict && SLASH != ch) {
-return error(settings, "invalid char in schema, not /", data);
+        case req_host_start:
+        case req_host_v6_start:
+        case req_host_v6:
+        case req_port_start:
+          switch (ch) {
+            /* No whitespace allowed here */
+            case SPACE:
+            case CR:
+            case LF:
+              return error(settings, "unexpected char in path", data);
+            default:
+              state = parse_url_char(ch);
+              if(dead == state){
+                return error(settings, "unexpected char in path", data);
+              }
           }
-          state = State.req_host;
           break;
-        
+
         case req_host:
-          if (isHostChar(ch)) {
-            break;
-          }	
-          switch (ch) {
-            case COLON:
-              state = State.req_port;
-              break;
-            case SLASH:
-              path_mark = p;
-              break;
-            case SPACE:
-              /* The request line looks like:
-               *   "GET http://foo.bar.com HTTP/1.1"
-               * That is, there is no path.
-               */
-              settings.call_on_url(this, data, url_mark, p-url_mark);
-              url_mark = -1;
-              state = State.req_http_start;
-              break;
-            case QMARK:
-              state = State.req_query_string_start;
-              break;
-            default:
-return error(settings, "host error in method line", data);
-          }
-          break;
-
+        case req_host_v6_end:
         case req_port:
-          if (isDigit(ch)) break;
-          switch (ch) {
-            case SLASH:
-              path_mark = p; 
-              state = State.req_path;
-              break;
-            case SPACE:
-              /* The request line looks like:
-               *   "GET http://foo.bar.com:1234 HTTP/1.1"
-               * That is, there is no path.
-               */
-              settings.call_on_url(this,data,url_mark,p-url_mark);
-              url_mark = -1;
-              state = State.req_http_start;
-              break;
-            case QMARK:
-              state = State.req_query_string_start;
-              break;
-            default:
-return error(settings, "invalid port", data);
-          }
-          break;
-      
         case req_path:
-          if (isNormalUrlChar(chi)) break;
-          switch (ch) {
-            case SPACE:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1;
-
-              settings.call_on_path(this,data,path_mark, p-path_mark);
-              path_mark = -1;
-              
-              state = State.req_http_start;
-              break;
-
-            case CR:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1;
-              
-              settings.call_on_path(this,data,path_mark, p-path_mark);
-              path_mark = -1;
-              
-              http_minor = 9;
-              state = State.res_line_almost_done;
-              break;
-
-            case LF:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1;
-              
-              settings.call_on_path(this,data,path_mark, p-path_mark);
-              path_mark = -1;
-              
-              http_minor = 9;
-              state = State.header_field_start;
-              break;
-
-            case QMARK:
-              settings.call_on_path(this,data,path_mark, p-path_mark);
-              path_mark = -1;
-              
-              state = State.req_query_string_start;
-              break;
-            
-            case HASH:
-              settings.call_on_path(this,data,path_mark, p-path_mark);
-              path_mark = -1;
-              
-              state = State.req_fragment_start;
-              break;
-            
-            default:
-return error(settings, "unexpected char in path", data);
-          }
-          break;
-      
         case req_query_string_start:
-          if (isNormalUrlChar(chi)) {
-            query_string_mark = p;
-            state = State.req_query_string;
-            break;
-          }
-
-          switch (ch) {
-            case QMARK: break;
-            case SPACE: 
-              settings.call_on_url(this, data, url_mark, p-url_mark);
-              url_mark = -1;
-              state = State.req_http_start;
-              break;
-            case CR:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1; 
-              http_minor = 9;
-              state = State.res_line_almost_done;
-              break;
-            case LF:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1;
-              http_minor = 9;
-              state = State.header_field_start;
-              break;
-            case HASH:
-              state = State.req_fragment_start;
-              break;
-            default:
-return error(settings, "unexpected char in path", data);
-          }
-          break;
-        
         case req_query_string:
-          if (isNormalUrlChar(chi)) {
-            break;
-          }
-
-          switch (ch) {
-            case QMARK: break; // allow extra '?' in query string
-            case SPACE: 
-              settings.call_on_url(this, data, url_mark, p-url_mark);
-              url_mark = -1;
-
-              settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
-              query_string_mark = -1;
-
-              state = State.req_http_start;
-              break;
-            case CR:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1; 
-
-              settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
-              query_string_mark = -1;
-              
-              http_minor = 9;
-              state = State.res_line_almost_done;
-              break;
-            case LF:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1;
-
-              settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
-              query_string_mark = -1;
-              http_minor = 9;
-
-              state = State.header_field_start;
-              break;
-            case HASH:
-              settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
-              query_string_mark = -1;
-              
-              state = State.req_fragment_start;
-              break;
-            default:
-return error(settings, "unexpected char in path", data);
-          }
-          break;
-
         case req_fragment_start:
-          if (isNormalUrlChar(chi)) {
-            fragment_mark = p;
-            state = State.req_fragment;
-            break;
-          }
-
-          switch (ch) {
-            case SPACE: 
-              settings.call_on_url(this, data, url_mark, p-url_mark);
-              url_mark = -1;
-     
-              state = State.req_http_start;
-              break;
-            case CR:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1; 
-
-              http_minor = 9;
-              state = State.res_line_almost_done;
-              break;
-            case LF:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1;
-              
-              http_minor = 9;
-              state = State.header_field_start;
-              break;
-            case QMARK:
-              fragment_mark = p;
-              state = State.req_fragment;
-              break;
-            case HASH:
-              break;
-            default:
-return error(settings, "unexpected char in path", data);
-          }
-          break;
-
         case req_fragment:
-          if (isNormalUrlChar(chi)) {
-            break;
-          }
-
           switch (ch) {
             case SPACE: 
               settings.call_on_url(this, data, url_mark, p-url_mark);
               url_mark = -1;
-          
-              settings.call_on_fragment(this, data, fragment_mark, p-fragment_mark);
-              fragment_mark = -1;
-              
               state = State.req_http_start;
               break;
             case CR:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1; 
-              
-              settings.call_on_fragment(this, data, query_string_mark, p-query_string_mark);
-              fragment_mark = -1;
-              
-              http_minor = 9;
-              state = State.res_line_almost_done;
-              break;
             case LF:
-              settings.call_on_url(this,data,url_mark, p-url_mark);
               url_mark = -1;
-              
-              settings.call_on_fragment(this, data, query_string_mark, p-query_string_mark);
-              fragment_mark = -1;
-              
+              http_major = 0;
               http_minor = 9;
-              state = State.header_field_start;
-              break;
-            case QMARK:
-            case HASH:
+              state = (CR == ch) ? req_line_almost_done : header_field_start;
+              settings.call_on_url(this, data, url_mark, p-url_mark); //TODO check params!!!
               break;
             default:
-return error(settings, "unexpected char in path", data);
+              state = parse_url_char(ch);
+              if(dead == state){
+                return error(settings, "unexpected char in path", data);
+              }
           }
           break;
         /******************* URL *******************/
@@ -776,34 +707,34 @@ return error(settings, "unexpected char in path", data);
             case SPACE:
               break;
             default:
-return error(settings, "error in req_http_H", data);
+              return error(settings, "error in req_http_H", data);
           }
           break;
 
         case req_http_H:
           if (strict && T != ch) {
-return error(settings, "unexpected char", data);
+            return error(settings, "unexpected char", data);
           }
           state = State.req_http_HT;
           break;
 
         case req_http_HT:
           if (strict && T != ch) {
-return error(settings, "unexpected char", data);
+            return error(settings, "unexpected char", data);
           }
           state = State.req_http_HTT;
           break;
 
         case req_http_HTT:
           if (strict && P != ch) {
-return error(settings, "unexpected char", data);
+            return error(settings, "unexpected char", data);
           }
           state = State.req_http_HTTP;
           break;
 
         case req_http_HTTP:
           if (strict && SLASH != ch) {
-return error(settings, "unexpected char", data);
+            return error(settings, "unexpected char", data);
           }
           state = req_first_http_major;
           break;
@@ -878,7 +809,7 @@ return error(settings, "ridiculous http minor", data);
           if (ch != LF) {
 return error(settings, "missing LF after request line", data);
           }
-          state = State.header_field_start;
+          state = header_field_start;
           break;
         }
 
@@ -890,7 +821,7 @@ return error(settings, "missing LF after request line", data);
         case header_field_start:
         {
           if (ch == CR) {
-            state = State.headers_almost_done;
+            state = headers_almost_done;
             break;
           }
 
@@ -910,8 +841,8 @@ return error(settings, "header not properly completed", data);
           c = token(ch);
 
           if (0 == c) {
-return error(settings, "invalid char in header:", data);
-          };
+            return error(settings, "invalid char in header:", data);
+          }
 
           header_field_mark = p;
 
@@ -1076,7 +1007,7 @@ return error(settings, "invalid header field", data);
 
         case header_value_start:
         {
-          if (SPACE == ch) break;
+          if ((SPACE == ch) || (TAB  == ch)) break;
 
           header_value_mark = p;
 
@@ -1185,8 +1116,16 @@ return error(settings, "Shouldn't be here", data);
 return error(settings, "Content-Length not numeric", data);
               } 
 
-              content_length *= 10;
-              content_length += (int)ch - 0x30;
+              int t = content_length; 
+              t *= 10;
+              t += (int)ch - 0x30;
+
+              /* Overflow? */
+              //TODO Not sure how to check
+              if (t < content_length || t == -1) { //ULLONG_MAX ??
+                return error(settings, "Invalid content length", data);
+              }
+              content_length = t;
               break;
 
             /* Transfer-Encoding: chunked */
@@ -1237,19 +1176,63 @@ return error(settings, "Content-Length not numeric", data);
 
         case header_almost_done:
           if (!header_almost_done(ch)) {
-return error(settings, "incorrect header ending, expection LF", data);
+            return error(settings, "incorrect header ending, expecting LF", data);
+          }
+          break;
+
+        case header_value_lws:
+          if (SPACE == ch || TAB == ch ){
+            state = header_value_start;
+          } else {
+            state = header_field_start;
           }
           break;
 
         case headers_almost_done:
           if (!headers_almost_done(ch, settings)) {
-return error(settings, "header not properly completed", data);
-          }
-          if (upgrade) {
-            return data.position()-this.p_start ;
+            return error(settings, "header not properly completed", data);
           }
           break;
 
+        case headers_done:
+          if (strict && (LF != ch)) {
+            return error(settings, "STRICT CHECK", data); //TODO correct error msg
+          }
+
+          nread = 0;
+
+          // Exit, the rest of the connect is in a different protocol.
+          if (upgrade) {
+            settings.call_on_message_complete(this);
+            state = State.body_identity_eof;
+            return data.position()-this.p_start;
+          }
+
+          if (0 != (flags & F_SKIPBODY)) {
+            settings.call_on_message_complete(this);
+            state = new_message();
+          } else if (0 != (flags & F_CHUNKED)) {
+            /* chunked encoding - ignore Content-Length header */
+            state = State.chunk_size_start;
+          } else {
+            if (content_length == 0) {
+              /* Content-Length header given but zero: Content-Length: 0\r\n */
+              settings.call_on_message_complete(this);
+              state = new_message();
+            } else if (content_length > 0) {
+              /* Content-Length header given and non-zero */
+              state = State.body_identity;
+            } else {
+              if (type == ParserType.HTTP_REQUEST || http_message_needs_eof()) {
+                /* Assume content-length 0 - read the next */
+                settings.call_on_message_complete(this);
+                state = new_message();
+              } else {
+                /* Read body until EOF */
+                state = State.body_identity_eof;
+              }
+            }
+          }
         /******************* Header *******************/
 
 
@@ -1257,7 +1240,8 @@ return error(settings, "header not properly completed", data);
 
         /******************* Body *******************/
         case body_identity:
-          to_read = min(pe - p, content_length); //TODO change to use buffer? 
+          //TODO apply changes from C version for s_body_identity
+          to_read = min(pe - p, content_length); //TODO change to use buffer?
 
           if (to_read > 0) {
             settings.call_on_body(this, data, p, to_read); 
@@ -1268,6 +1252,7 @@ return error(settings, "header not properly completed", data);
               state = new_message(); 
             }
           }
+
           break;
 
 
@@ -1279,6 +1264,11 @@ return error(settings, "header not properly completed", data);
             data.position(p+to_read);
           }
           break;
+        
+        case message_done:
+          state = new_message();
+          settings.call_on_message_complete(this);
+
         /******************* Body *******************/
 
 
@@ -1305,7 +1295,7 @@ return error(settings, "invalid hex char in chunk content length", data);
 
         case chunk_size:
           if (0 == (flags & F_CHUNKED)) {
-return error(settings, "not chunked", data);
+            return error(settings, "not chunked", data);
           }
 
           if (CR == ch) {
@@ -1320,11 +1310,16 @@ return error(settings, "not chunked", data);
               state = State.chunk_parameters;
               break;
             }
-return error(settings, "invalid hex char in chunk content length", data);
+            return error(settings, "invalid hex char in chunk content length", data);
           }
-
-          content_length *= 16;
-          content_length += c;
+          int t = content_length;
+          
+          t *= 16;
+          t += c;
+          if(t < content_length || t == 0){
+            return error(settings, "invalid content length", data);
+          }
+          content_length = t;
           break;
 
 
@@ -1363,9 +1358,9 @@ return error(settings, "expected LF at end of chunk size", data);
 
 
         case chunk_data:
-        {
+          //TODO Apply changes from C version for s_chunk_data
           if (0 == (flags & F_CHUNKED)) {
-return error(settings, "not chunked", data);
+            return error(settings, "not chunked", data);
           }
 
           to_read = min(pe-p, content_length);
@@ -1380,7 +1375,6 @@ return error(settings, "not chunked", data);
 
           content_length -= to_read;
           break;
-        }
 
 
 
@@ -1392,6 +1386,8 @@ return error(settings, "not chunked", data);
 return error(settings, "chunk data terminated incorrectly, expected CR", data);
           }
           state = State.chunk_data_done;
+          //TODO CALLBACK_DATA(body)
+          // settings.call_on_body(this, data,p,?);
           break;
 
 
@@ -1423,9 +1419,6 @@ return error(settings, "unhandled state", data);
     
 	  settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
     settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
-    settings.call_on_fragment    (this, data, fragment_mark,     p-fragment_mark);
-    settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
-    settings.call_on_path        (this, data, path_mark,         p-path_mark);
     settings.call_on_url         (this, data, url_mark,          p-url_mark);
     
     return data.position()-this.p_start;	
@@ -1435,6 +1428,24 @@ return error(settings, "unhandled state", data);
     settings.call_on_error(this, mes, data, this.p_start);
     this.state = State.dead;
     return data.position()-this.p_start;
+  }
+
+  public boolean http_message_needs_eof() {
+    if(type == ParserType.HTTP_REQUEST){
+      return false;
+    }
+    /* See RFC 2616 section 4.4 */
+    if ((status_code / 100 == 1) || /* 1xx e.g. Continue */
+        (status_code == 204) ||     /* No Content */
+        (status_code == 304) ||     /* Not Modified */
+        (flags & F_SKIPBODY) == 0) {     /* response to a HEAD request */
+          return false;
+      }
+    if ((flags & F_CHUNKED) == 0 || content_length != 0) {
+      return false;
+    }
+
+    return true;
   }
 
   /* If http_should_keep_alive() in the on_headers_complete or
@@ -1448,24 +1459,27 @@ return error(settings, "unhandled state", data);
       /* HTTP/1.1 */
       if ( 0 != (flags & F_CONNECTION_CLOSE) ) {
         return false;
-      } else {
-        return true;
       }
     } else {
       /* HTTP/1.0 or earlier */
-      if ( 0 != (flags & F_CONNECTION_KEEP_ALIVE) ) {
-        return true;
-      } else {
+      if ( 0 == (flags & F_CONNECTION_KEEP_ALIVE) ) {
         return false;
       }
     }
+    return !http_message_needs_eof();
   }
+
+  //TODO Skip http_parser_parse_url & http_parser_pause for now
 
   boolean isDigit(byte b) {
     if (b >= 0x30 && b <=0x39) {
       return true;
     }
     return false;
+  }
+
+  boolean isHex(byte b) {
+    return isDigit(b) || (lower(b) >= 0x61 /*a*/ && lower(b) <= 0x66 /*f*/);
   }
 
   boolean isAtoZ(byte b) {
@@ -1517,7 +1531,7 @@ return error(settings, "unhandled state", data);
       case M: return HTTPMethod.HTTP_MKCOL;    /* or MOVE, MKACTIVITY, MERGE, M-SEARCH */
       case N: return HTTPMethod.HTTP_NOTIFY; 
       case O: return HTTPMethod.HTTP_OPTIONS; 
-      case P: return HTTPMethod.HTTP_POST;     /* or PROPFIND, PROPPATH, PUT */
+      case P: return HTTPMethod.HTTP_POST;     /* or PROPFIND|PROPPATCH|PUT|PATCH|PURGE */
       case R: return HTTPMethod.HTTP_REPORT;
       case S: return HTTPMethod.HTTP_SUBSCRIBE;
       case T: return HTTPMethod.HTTP_TRACE;   
@@ -1531,7 +1545,7 @@ return error(settings, "unhandled state", data);
       return false;
     }
 
-    state = State.header_field_start;
+    state = State.header_value_lws;
     // TODO java enums support some sort of bitflag mechanism !?
     switch (header_state) {
       case connection_keep_alive:
@@ -1550,22 +1564,20 @@ return error(settings, "unhandled state", data);
   }
 
   boolean headers_almost_done (byte ch, ParserSettings settings) {
-
     if (LF != ch) {
       return false;
     }
     if (0 != (flags & F_TRAILING)) {
       /* End of a chunked request */
+      state = new_message();
 
       settings.call_on_headers_complete(this);
       settings.call_on_message_complete(this);
 
-      state = new_message(); 
-
       return true;
     }
 
-    nread = 0;
+    state = headers_done;
 
     if (0 != (flags & F_UPGRADE) || HTTPMethod.HTTP_CONNECT == method) {
       upgrade = true;
@@ -1612,40 +1624,6 @@ return error(settings, "unhandled state", data);
     //              return p - data; /* Error */ // TODO // RuntimeException ?
     //          }
     //        }
-
-
-    // Exit, the rest of the connect is in a different protocol.
-    if (upgrade) {
-      settings.call_on_message_complete(this);
-      state = State.body_identity_eof;
-      return true;
-    }
-
-    if (0 != (flags & F_SKIPBODY)) {
-      settings.call_on_message_complete(this);
-      state = new_message(); 
-    } else if (0 != (flags & F_CHUNKED)) {
-      /* chunked encoding - ignore Content-Length header */
-      state = State.chunk_size_start;
-    } else {
-      if (content_length == 0) {
-        /* Content-Length header given but zero: Content-Length: 0\r\n */
-        settings.call_on_message_complete(this);
-        state = new_message(); 
-      } else if (content_length > 0) {
-        /* Content-Length header given and non-zero */
-        state = State.body_identity;
-      } else {
-        if (type == ParserType.HTTP_REQUEST || http_should_keep_alive()) {
-          /* Assume content-length 0 - read the next */
-          settings.call_on_message_complete(this);
-          state = new_message(); 
-        } else {
-          /* Read body until EOF */
-          state = State.body_identity_eof;
-        }
-      }
-    }
     return true;
   } // headers_almost_done
 
@@ -1883,6 +1861,7 @@ return error(settings, "unhandled state", data);
     public static final byte LF = 0x0a;
     public static final byte DOT = 0x2e;
     public static final byte SPACE = 0x20;
+    public static final byte TAB = 0x09;
     public static final byte SEMI = 0x3b;
     public static final byte COLON = 0x3a;
     public static final byte HASH = 0x23;
@@ -1897,7 +1876,7 @@ return error(settings, "unhandled state", data);
 
     dead               
 
-    , start_res_or_res
+    , start_req_or_res
     , res_or_resp_H
     , start_res
     , res_H
