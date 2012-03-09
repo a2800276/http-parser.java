@@ -496,10 +496,9 @@ return error(settings, "invalid char in schema, not /", data);
           break;
         
         case req_host:
-          if (isAtoZ(ch)) {
+          if (isHostChar(ch)) {
             break;
           }	
-          if (isDigit(ch) || DOT == ch || DASH == ch) break;
           switch (ch) {
             case COLON:
               state = State.req_port;
@@ -549,7 +548,7 @@ return error(settings, "invalid port", data);
           break;
       
         case req_path:
-          if (normal_url_char[chi]) break;
+          if (isNormalUrlChar(chi)) break;
           switch (ch) {
             case SPACE:
               settings.call_on_url(this,data,url_mark, p-url_mark);
@@ -603,7 +602,7 @@ return error(settings, "unexpected char in path", data);
           break;
       
         case req_query_string_start:
-          if (normal_url_char[chi]) {
+          if (isNormalUrlChar(chi)) {
             query_string_mark = p;
             state = State.req_query_string;
             break;
@@ -637,7 +636,7 @@ return error(settings, "unexpected char in path", data);
           break;
         
         case req_query_string:
-          if (normal_url_char[chi]) {
+          if (isNormalUrlChar(chi)) {
             break;
           }
 
@@ -684,7 +683,7 @@ return error(settings, "unexpected char in path", data);
           break;
 
         case req_fragment_start:
-          if (normal_url_char[chi]) {
+          if (isNormalUrlChar(chi)) {
             fragment_mark = p;
             state = State.req_fragment;
             break;
@@ -723,7 +722,7 @@ return error(settings, "unexpected char in path", data);
           break;
 
         case req_fragment:
-          if (normal_url_char[chi]) {
+          if (isNormalUrlChar(chi)) {
             break;
           }
 
@@ -1491,7 +1490,22 @@ return error(settings, "unhandled state", data);
         return (byte)tokens[b];
     }
   }
-	
+
+  boolean isHostChar(byte ch){
+    if(!strict){
+      return (isAtoZ(ch)) || DOT == ch || DASH == ch || UNDER == ch ;
+    }else{
+      return (isAtoZ(ch)) || DOT == ch || DASH == ch;
+    }
+  }
+
+  boolean isNormalUrlChar(int chi) {
+    if(!strict){
+      return (chi > 0x80) || normal_url_char[chi];
+    }else{
+      return normal_url_char[chi];
+    }
+  }
 
   HTTPMethod start_req_method_assign(byte c){
     switch (c) {
@@ -1835,29 +1849,6 @@ return error(settings, "unhandled state", data);
      true,    true,    true,    true,    true,    true,    true,    true,
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
      true,    true,    true,    true,    true,    true,    true,   false,
-
-/*    hi bit set, not ascii                                                  */
-/*    Remainder of non-ASCII range are accepted as-is to support implicitly UTF-8
- *    encoded paths. This is out of spec, but clients generate this and most other
- *    HTTP servers support it. We should, too. */
-
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-    
     };
 
     public static final byte A = 0x41;
@@ -1886,6 +1877,7 @@ return error(settings, "unhandled state", data);
     public static final byte X = 0x58;
     public static final byte Y = 0x59;
     public static final byte Z = 0x5a;
+    public static final byte UNDER = 0x5f;
     public static final byte CR = 0x0d;
     public static final byte LF = 0x0a;
     public static final byte DOT = 0x2e;
