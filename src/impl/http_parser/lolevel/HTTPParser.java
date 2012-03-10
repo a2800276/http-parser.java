@@ -102,6 +102,9 @@ public class  HTTPParser {
    * URL and non-URL states by looking for these.
    */
   public State parse_url_char(byte ch) {
+
+    int chi = ch & 0xff;            // utility, ch without signedness for table lookups.
+
     if(SPACE == ch){
       throw new HTTPException("space as url char");
     }
@@ -190,7 +193,7 @@ public class  HTTPParser {
         break;
 
       case req_path:
-        if (isNormalUrlChar(ch)) {
+        if (isNormalUrlChar(chi)) {
           return req_path;
         }
         switch (ch) {
@@ -204,7 +207,7 @@ public class  HTTPParser {
 
       case req_query_string_start:
       case req_query_string:
-        if (isNormalUrlChar(ch)) {
+        if (isNormalUrlChar(chi)) {
           return req_query_string;
         }
 
@@ -220,7 +223,7 @@ public class  HTTPParser {
         break;
 
       case req_fragment_start:
-        if (isNormalUrlChar(ch)) {
+        if (isNormalUrlChar(chi)) {
           return req_fragment;
         }
         switch (ch) {
@@ -319,24 +322,35 @@ public class  HTTPParser {
         url_mark = p;
         break;
     }
+    boolean reexecute = false;
+    int pe = 0;
+    byte ch = 0;
+    int chi = 0;
+    byte c = -1;
+    int to_read = 0;
+
     // this is where the work gets done, traverse the available data...
-    while (data.position() != data.limit()) {
+    while (data.position() != data.limit() || reexecute) {
+//      p(state + ": r: " + reexecute + " :: " +p );
 
-            p = data.position();
-      int  pe = data.limit();
+      if(!reexecute){
+        p = data.position();
+        pe = data.limit();
+        ch     = data.get();           // the current character to process.
+        chi = ch & 0xff;            // utility, ch without signedness for table lookups.
+        c      = -1;                   // utility variably used for up- and downcasing etc.
+        to_read =  0;                   // used to keep track of how much of body, etc. is left to read
 
-      byte ch     = data.get();           // the current character to process.
-      int  chi    = ch & 0xff;            // utility, ch without signedness for table lookups.
-      byte c      = -1;                   // utility variably used for up- and downcasing etc.
-      int to_read =  0;                   // used to keep track of how much of body, etc. is left to read
-
-      if (parsing_header(state)) {
-        ++nread;
-        if (nread > HTTP_MAX_HEADER_SIZE) {
-          return error(settings, "possible buffer overflow", data);
+        if (parsing_header(state)) {
+          ++nread;
+          if (nread > HTTP_MAX_HEADER_SIZE) {
+            return error(settings, "possible buffer overflow", data);
+          }
         }
       }
-//      p(state + ":" + (char)ch +":"+p);
+      reexecute = false;
+//      p(state + " ::: " + ch + " : "  + (((CR == ch) || (LF == ch)) ? ch : ("'" + (char)ch + "'")) +": "+p );
+
       switch (state) {
          /*
           * this state is used after a 'Connection: close' message
@@ -676,16 +690,18 @@ return error(settings, "not LF", data);
           switch (ch) {
             case SPACE: 
               settings.call_on_url(this, data, url_mark, p-url_mark);
+              settings.call_on_path(this, data, url_mark, p - url_mark);
               url_mark = -1;
               state = State.req_http_start;
               break;
             case CR:
             case LF:
-              url_mark = -1;
               http_major = 0;
               http_minor = 9;
               state = (CR == ch) ? req_line_almost_done : header_field_start;
               settings.call_on_url(this, data, url_mark, p-url_mark); //TODO check params!!!
+              settings.call_on_path(this, data, url_mark, p-url_mark);
+              url_mark = -1;
               break;
             default:
               state = parse_url_char(ch);
@@ -829,12 +845,7 @@ return error(settings, "missing LF after request line", data);
             /* they might be just sending \n instead of \r\n so this would be
              * the second \n to denote the end of headers*/
             state = State.headers_almost_done;
-            if (!headers_almost_done(ch, settings)) {
-return error(settings, "header not properly completed", data);
-            }
-            if (upgrade) {
-              return data.position() - this.p_start;
-            }
+            reexecute = true;
             break;
           }
 
@@ -1092,10 +1103,8 @@ return error(settings, "Content-Length not numeric", data);
           if (LF == ch) {
             settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
             header_value_mark = -1;
-            
-            if (!header_almost_done(ch)) {
-return error(settings, "incorrect header ending, expection LF", data);
-            }
+            state = header_almost_done;
+            reexecute = true;
             break;
           }
 
@@ -1185,13 +1194,69 @@ return error(settings, "Content-Length not numeric", data);
             state = header_value_start;
           } else {
             state = header_field_start;
+            reexecute = true;
           }
           break;
 
         case headers_almost_done:
-          if (!headers_almost_done(ch, settings)) {
+          if (LF != ch) {
             return error(settings, "header not properly completed", data);
           }
+          if (0 != (flags & F_TRAILING)) {
+            /* End of a chunked request */
+            state = new_message();
+
+            settings.call_on_message_complete(this);
+            break;
+          }
+
+          state = headers_done;
+
+          if (0 != (flags & F_UPGRADE) || HTTPMethod.HTTP_CONNECT == method) {
+            upgrade = true;
+          }
+
+          /* Here we call the headers_complete callback. This is somewhat
+          * different than other callbacks because if the user returns 1, we
+          * will interpret that as saying that this message has no body. This
+          * is needed for the annoying case of recieving a response to a HEAD
+          * request.
+          */
+
+          /* (responses to HEAD request contain a CONTENT-LENGTH header
+          * but no content)
+          *
+          * Consider what to do here: I don't like the idea of the callback
+          * interface having a different contract in the case of HEAD
+          * responses. The alternatives would be either to:
+          *
+          * a.) require the header_complete callback to implement a different
+          * interface or
+          *
+          * b.) provide an overridden execute(bla, bla, boolean
+          * parsingHeader) implementation ...
+          */
+
+          /*TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO */
+          if (null != settings.on_headers_complete) {
+            settings.call_on_headers_complete(this);
+            //return;
+          }
+
+          //        if (null != settings.on_headers_complete) {
+          //          switch (settings.on_headers_complete.cb(parser)) {
+          //            case 0:
+          //              break;
+          //
+          //            case 1:
+          //              flags |= F_SKIPBODY;
+          //              break;
+          //
+          //            default:
+          //              return p - data; /* Error */ // TODO // RuntimeException ?
+          //          }
+          //        }
+          reexecute = true;
           break;
 
         case headers_done:
@@ -1233,6 +1298,8 @@ return error(settings, "Content-Length not numeric", data);
               }
             }
           }
+
+          break;
         /******************* Header *******************/
 
 
@@ -1253,6 +1320,7 @@ return error(settings, "Content-Length not numeric", data);
             }
           }
 
+          reexecute = true;
           break;
 
 
@@ -1420,6 +1488,7 @@ return error(settings, "unhandled state", data);
 	  settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
     settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
     settings.call_on_url         (this, data, url_mark,          p-url_mark);
+    settings.call_on_path        (this, data, url_mark,          p-url_mark);
     
     return data.position()-this.p_start;	
   } // execute
@@ -1563,69 +1632,8 @@ return error(settings, "unhandled state", data);
     return true;
   }
 
-  boolean headers_almost_done (byte ch, ParserSettings settings) {
-    if (LF != ch) {
-      return false;
-    }
-    if (0 != (flags & F_TRAILING)) {
-      /* End of a chunked request */
-      state = new_message();
-
-      settings.call_on_headers_complete(this);
-      settings.call_on_message_complete(this);
-
-      return true;
-    }
-
-    state = headers_done;
-
-    if (0 != (flags & F_UPGRADE) || HTTPMethod.HTTP_CONNECT == method) {
-      upgrade = true;
-    }
-    
-
-    /* Here we call the headers_complete callback. This is somewhat
-     * different than other callbacks because if the user returns 1, we
-     * will interpret that as saying that this message has no body. This
-     * is needed for the annoying case of recieving a response to a HEAD
-     * request.
-     */
-
-    /* (responses to HEAD request contain a CONTENT-LENGTH header
-     * but no content)
-     *
-     * Consider what to do here: I don't like the idea of the callback
-     * interface having a different contract in the case of HEAD
-     * responses. The alternatives would be either to:
-     *
-     * a.) require the header_complete callback to implement a different
-     * interface or
-     *
-     * b.) provide an overridden execute(bla, bla, boolean
-     * parsingHeader) implementation ...
-     */
-
-    /*TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO */ 
-    if (null != settings.on_headers_complete) {
-      settings.call_on_headers_complete(this);
-      //return;
-    }
-    
-    //        if (null != settings.on_headers_complete) {
-    //          switch (settings.on_headers_complete.cb(parser)) {
-    //            case 0:
-    //              break;
-    //
-    //            case 1:
-    //              flags |= F_SKIPBODY;
-    //              break;
-    //
-    //            default:
-    //              return p - data; /* Error */ // TODO // RuntimeException ?
-    //          }
-    //        }
-    return true;
-  } // headers_almost_done
+//  boolean headers_almost_done (byte ch, ParserSettings settings) {
+//  } // headers_almost_done
 
 
   final int min (int a, int b) {
