@@ -1269,7 +1269,7 @@ return error(settings, "Content-Length not numeric", data);
           // Exit, the rest of the connect is in a different protocol.
           if (upgrade) {
             settings.call_on_message_complete(this);
-            state = State.body_identity_eof;
+            state = new_message();
             return data.position()-this.p_start;
           }
 
@@ -1307,24 +1307,19 @@ return error(settings, "Content-Length not numeric", data);
 
         /******************* Body *******************/
         case body_identity:
-          //TODO apply changes from C version for s_body_identity
           to_read = min(pe - p, content_length); //TODO change to use buffer?
           body_mark = p;
 
-//          if (to_read > 0) {
-          settings.call_on_body(this, data, p, to_read);
-          data.position(p+to_read);
-          content_length -= to_read;
+          if (to_read > 0) {
+            settings.call_on_body(this, data, p, to_read);
+            data.position(p+to_read);
+            content_length -= to_read;
 
-          if (content_length == 0) {
-            state = message_done;
-            settings.call_on_message_complete(this);
-//            state = new_message();
-            reexecute = true;
+            if (content_length == 0) {
+              state = message_done;
+              reexecute = true;
+            }
           }
-//          }
-
-
           break;
 
 
