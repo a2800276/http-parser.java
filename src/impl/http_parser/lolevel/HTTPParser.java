@@ -20,7 +20,7 @@ public class  HTTPParser {
 	int flags; // TODO
 
 	int nread;
-	int content_length;
+	long content_length;
 
   int p_start; // updated each call to execute to indicate where the buffer was before we began calling it.
 
@@ -1125,13 +1125,13 @@ return error(settings, "Shouldn't be here", data);
 return error(settings, "Content-Length not numeric", data);
               } 
 
-              int t = content_length; 
+              long t = content_length; 
               t *= 10;
-              t += (int)ch - 0x30;
+              t += (long)ch - 0x30;
 
               /* Overflow? */
-              //TODO Not sure how to check
-              if (t < content_length || t == -1) { //ULLONG_MAX ??
+              // t will wrap and become negative ...
+              if (t < content_length) { 
                 return error(settings, "Invalid content length", data);
               }
               content_length = t;
@@ -1379,11 +1379,11 @@ return error(settings, "invalid hex char in chunk content length", data);
             }
             return error(settings, "invalid hex char in chunk content length", data);
           }
-          int t = content_length;
+          long t = content_length;
           
           t *= 16;
           t += c;
-          if(t < content_length || t == -1){
+          if(t < content_length){
             return error(settings, "invalid content length", data);
           }
           content_length = t;
@@ -1639,6 +1639,9 @@ return error(settings, "unhandled state", data);
     return a < b ? a : b;
   }
   
+  final int min (int a, long b) {
+    return a < b ? a : (int)b;
+  }
   /* probably not the best place to hide this ... */
 	public boolean HTTP_PARSER_STRICT;
   State new_message() {
