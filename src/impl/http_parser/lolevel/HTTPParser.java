@@ -125,7 +125,7 @@ public class  HTTPParser {
         if(isAtoZ(ch)){
           return req_schema;
         }
-        if(SEMI == ch){
+        if(COLON == ch){
           return req_schema_slash;
         }
         break;
@@ -1205,7 +1205,7 @@ return error(settings, "Content-Length not numeric", data);
           if (0 != (flags & F_TRAILING)) {
             /* End of a chunked request */
             state = new_message();
-
+            settings.call_on_headers_complete(this);
             settings.call_on_message_complete(this);
             break;
           }
@@ -1309,18 +1309,22 @@ return error(settings, "Content-Length not numeric", data);
         case body_identity:
           //TODO apply changes from C version for s_body_identity
           to_read = min(pe - p, content_length); //TODO change to use buffer?
+          body_mark = p;
 
-          if (to_read > 0) {
-            settings.call_on_body(this, data, p, to_read); 
-            data.position(p+to_read);
-            content_length -= to_read;
-            if (content_length == 0) {
-              settings.call_on_message_complete(this);
-              state = new_message(); 
-            }
+//          if (to_read > 0) {
+          settings.call_on_body(this, data, p, to_read);
+          data.position(p+to_read);
+          content_length -= to_read;
+
+          if (content_length == 0) {
+            state = message_done;
+            settings.call_on_message_complete(this);
+//            state = new_message();
+            reexecute = true;
           }
+//          }
 
-          reexecute = true;
+
           break;
 
 
@@ -1336,7 +1340,7 @@ return error(settings, "Content-Length not numeric", data);
         case message_done:
           state = new_message();
           settings.call_on_message_complete(this);
-
+          break;
         /******************* Body *******************/
 
 
@@ -1384,7 +1388,7 @@ return error(settings, "invalid hex char in chunk content length", data);
           
           t *= 16;
           t += c;
-          if(t < content_length || t == 0){
+          if(t < content_length || t == -1){
             return error(settings, "invalid content length", data);
           }
           content_length = t;
@@ -1576,9 +1580,9 @@ return error(settings, "unhandled state", data);
 
   boolean isHostChar(byte ch){
     if(!strict){
-      return (isAtoZ(ch)) || DOT == ch || DASH == ch || UNDER == ch ;
+      return (isAtoZ(ch)) || isDigit(ch) || DOT == ch || DASH == ch || UNDER == ch ;
     }else{
-      return (isAtoZ(ch)) || DOT == ch || DASH == ch;
+      return (isAtoZ(ch)) || isDigit(ch) || DOT == ch || DASH == ch;
     }
   }
 
