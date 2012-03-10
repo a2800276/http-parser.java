@@ -1131,7 +1131,7 @@ return error(settings, "Content-Length not numeric", data);
 
               /* Overflow? */
               // t will wrap and become negative ...
-              if (t < content_length) { //ULLONG_MAX ??
+              if (t < content_length) { 
                 return error(settings, "Invalid content length", data);
               }
               content_length = t;
