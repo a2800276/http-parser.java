@@ -273,9 +273,9 @@ public class  HTTPParser {
     // else there is no way of knowing the message is complete. 
     int len = (data.limit() - data.position());
     if (0 == len) {
-      //			if (State.body_identity_eof == state) {
-      //				settings.call_on_message_complete(this);
-      //			}
+//      			if (State.body_identity_eof == state) {
+//      				settings.call_on_message_complete(this);
+//      			}
       switch (state) {
         case body_identity_eof:
           settings.call_on_message_complete(this);
@@ -1268,30 +1268,30 @@ return error(settings, "Content-Length not numeric", data);
 
           // Exit, the rest of the connect is in a different protocol.
           if (upgrade) {
-            settings.call_on_message_complete(this);
             state = new_message();
+            settings.call_on_message_complete(this);
             return data.position()-this.p_start;
           }
 
           if (0 != (flags & F_SKIPBODY)) {
-            settings.call_on_message_complete(this);
             state = new_message();
+            settings.call_on_message_complete(this);
           } else if (0 != (flags & F_CHUNKED)) {
             /* chunked encoding - ignore Content-Length header */
             state = State.chunk_size_start;
           } else {
             if (content_length == 0) {
               /* Content-Length header given but zero: Content-Length: 0\r\n */
-              settings.call_on_message_complete(this);
               state = new_message();
-            } else if (content_length > 0) {
+              settings.call_on_message_complete(this);
+            } else if (content_length != -1) {
               /* Content-Length header given and non-zero */
               state = State.body_identity;
             } else {
-              if (type == ParserType.HTTP_REQUEST || http_message_needs_eof()) {
+              if (type == ParserType.HTTP_REQUEST || !http_message_needs_eof()) {
                 /* Assume content-length 0 - read the next */
-                settings.call_on_message_complete(this);
                 state = new_message();
+                settings.call_on_message_complete(this);
               } else {
                 /* Read body until EOF */
                 state = State.body_identity_eof;
@@ -1327,7 +1327,7 @@ return error(settings, "Content-Length not numeric", data);
         case body_identity_eof:
           to_read = pe - p;  // TODO change to use buffer ?
           if (to_read > 0) {
-            settings.call_on_body(this, data, p, to_read); 
+            settings.call_on_body(this, data, p, to_read);
             data.position(p+to_read);
           }
           break;
@@ -1506,10 +1506,10 @@ return error(settings, "unhandled state", data);
     if ((status_code / 100 == 1) || /* 1xx e.g. Continue */
         (status_code == 204) ||     /* No Content */
         (status_code == 304) ||     /* Not Modified */
-        (flags & F_SKIPBODY) == 0) {     /* response to a HEAD request */
+        (flags & F_SKIPBODY) != 0) {     /* response to a HEAD request */
           return false;
       }
-    if ((flags & F_CHUNKED) == 0 || content_length != 0) {
+    if ((flags & F_CHUNKED) != 0 || content_length != -1) {
       return false;
     }
 
@@ -1536,6 +1536,7 @@ return error(settings, "unhandled state", data);
     }
     return !http_message_needs_eof();
   }
+
 
   //TODO Skip http_parser_parse_url & http_parser_pause for now
 

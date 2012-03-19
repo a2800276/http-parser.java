@@ -493,7 +493,7 @@ fragment    :
 query_string:
 body        :""
 body_size   :0
-should_keep_alive         :1
+should_keep_alive         :0
 upgrade                   :0
 http_major                :1
 http_minor                :1
@@ -509,7 +509,7 @@ fragment    :
 query_string:
 body        :""
 body_size   :0
-should_keep_alive         :1
+should_keep_alive         :0
 upgrade                   :0
 http_major                :1
 http_minor                :1
