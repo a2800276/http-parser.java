@@ -1540,18 +1540,16 @@ return error(settings, "unhandled state", data);
 
   public int parse_url(ByteBuffer data, boolean is_connect, HTTPParserUrl u) {
     
-    UrlFields uf = UrlFields.UF_SCHEMA;
-    UrlFields old_uf = UrlFields.UF_SCHEMA;
+    UrlFields uf = UrlFields.UF_MAX;
+    UrlFields old_uf = UrlFields.UF_MAX;
     u.port = 0;
     u.field_set = 0;
     state = (is_connect ? State.req_host_start : State.req_spaces_before_url);
     int p_init = data.position();
     int p = 0;
-    int pe = 0;
     byte ch = 0;
     while (data.position() != data.limit()) {
       p = data.position();
-      pe = data.limit();
       ch = data.get();
       state = parse_url_char(ch);
       switch(state) {
@@ -1599,7 +1597,7 @@ return error(settings, "unhandled state", data);
       }
       /* Nothing's changed; soldier on */
       if (uf == old_uf) {
-        u.field_data[uf.getIndex()].len++;//Not sure if using ordinal() is a good idea ...
+        u.field_data[uf.getIndex()].len++;
         continue;
       }
 
@@ -1630,7 +1628,7 @@ return error(settings, "unhandled state", data);
 
     if (0 != (u.field_set & (1 << UrlFields.UF_PORT.getIndex()))) {
       /* Don't bother with endp; we've already validated the string */
-      int v = strtoi(data, p + u.field_data[UrlFields.UF_PORT.getIndex()].off);
+      int v = strtoi(data, p_init + u.field_data[UrlFields.UF_PORT.getIndex()].off);
 
       /* Ports have a max value of 2^16 */
       if (v > 0xffff) {
@@ -1649,7 +1647,7 @@ return error(settings, "unhandled state", data);
     data.position(start_pos);
     byte ch;
     String str = "";
-    while(true) {
+    while(data.position() < data.limit()) {
       ch = data.get();
       if(Character.isWhitespace((char)ch)){
         continue;
