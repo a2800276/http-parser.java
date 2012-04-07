@@ -5,6 +5,7 @@ import java.io.*;
 import java.util.*;
 
 import http_parser.HTTPMethod;
+import http_parser.HTTPParserUrl;
 import http_parser.ParserType;
 import http_parser.lolevel.TestLoaderNG.Header;
 import http_parser.lolevel.TestLoaderNG.LastHeader;
@@ -50,6 +51,7 @@ public class Message {
 
   public String toString() {
     StringBuilder b = new StringBuilder();
+    b.append("NAME: "); b.append(name);b.append("\n");
     b.append("type: "); b.append(type);b.append("\n");
     b.append("method: "); b.append(method);b.append("\n");
     b.append("status_code: "); b.append(status_code);b.append("\n");
@@ -168,10 +170,7 @@ public class Message {
 
   TestSettings settings() {
     final TestSettings s = new TestSettings(); 
-    s.on_path         = getCB(request_path, "path", s);
-    s.on_query_string = getCB(query_string, "query_string", s);
     s.on_url          = getCB(request_url,  "url", s);
-    s.on_fragment     = getCB(fragment,     "fragment", s);
     s.on_message_begin = new HTTPCallback() {
       public int cb (HTTPParser p) {
         message_begin_called = true;
@@ -219,10 +218,17 @@ public class Message {
         String parsed_frag  = null;
         
         try {
-          parsed_path  = new String(s.map.get("path").toArray(),         "UTF8");
-          parsed_query = new String(s.map.get("query_string").toArray(), "UTF8");
           parsed_url   = new String(s.map.get("url").toArray(),          "UTF8");
-          parsed_frag  = new String(s.map.get("fragment").toArray(),     "UTF8");
+
+          HTTPParserUrl u = new HTTPParserUrl();
+          HTTPParser pp = new HTTPParser();
+          ByteBuffer data = Util.buffer(parsed_url);
+          pp.parse_url(data,false, u);
+          
+          parsed_path  = u.getFieldValue(HTTPParser.UrlFields.UF_PATH, data);
+          parsed_query = u.getFieldValue(HTTPParser.UrlFields.UF_QUERY, data);
+          parsed_frag  = u.getFieldValue(HTTPParser.UrlFields.UF_FRAGMENT, data);
+
         } catch (java.io.UnsupportedEncodingException uee) {
           throw new RuntimeException(uee);
         }

@@ -1,5 +1,10 @@
 package http_parser;
 
+import http_parser.lolevel.*;
+import http_parser.lolevel.HTTPParser;
+
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
@@ -26,6 +31,17 @@ public class HTTPParserUrl {
     this.field_data = field_data;
   }
 
+  public String getFieldValue(HTTPParser.UrlFields field, ByteBuffer data) throws UnsupportedEncodingException {
+    FieldData fd = this.field_data[field.getIndex()];
+    if(fd.off == 0 & fd.len == 0) return "";
+    byte[] dst = new byte[fd.len];
+    int current_pos = data.position();
+    data.position(fd.off);
+    data.get(dst,0,fd.len);
+    data.position(current_pos);
+    String v = new String(dst, "UTF8");
+    return v;
+  }
 
   @Override
   public boolean equals(Object o) {

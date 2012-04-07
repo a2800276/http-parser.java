@@ -122,7 +122,7 @@ public class Util {
     }
 
     check(0 == read);
-    check(settings.numCalled == message_count); 
+    check(settings.numCalled == message_count);
   }  
   static void p (Object o) {
     System.out.println(o);

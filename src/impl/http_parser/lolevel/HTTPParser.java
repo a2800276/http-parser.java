@@ -2110,7 +2110,7 @@ return error(settings, "unhandled state", data);
     , connection_keep_alive
     , connection_close
   }
-  enum UrlFields {
+  public enum UrlFields {
       UF_SCHEMA(0)
     , UF_HOST(1)
     , UF_PORT(2)
