@@ -194,7 +194,7 @@ public class TestLoaderNG {
       } catch (Throwable th) {
         p("failed: "+t.name);
       }
-      //	t.execute();
+      t.execute();
       //	System.exit(0);
     }
   }
