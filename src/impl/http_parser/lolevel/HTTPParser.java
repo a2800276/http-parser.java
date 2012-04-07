@@ -3,6 +3,7 @@ package http_parser.lolevel;
 import java.nio.ByteBuffer;
 import http_parser.HTTPException;
 import http_parser.HTTPMethod;
+import http_parser.HTTPParserUrl;
 import http_parser.ParserType;
 import static http_parser.lolevel.HTTPParser.C.*;
 import static http_parser.lolevel.HTTPParser.State.*;
@@ -1537,9 +1538,131 @@ return error(settings, "unhandled state", data);
     return !http_message_needs_eof();
   }
 
+  public int parse_url(ByteBuffer data, boolean is_connect, HTTPParserUrl u) {
+    
+    UrlFields uf = UrlFields.UF_SCHEMA;
+    UrlFields old_uf = UrlFields.UF_SCHEMA;
+    u.port = 0;
+    u.field_set = 0;
+    state = (is_connect ? State.req_host_start : State.req_spaces_before_url);
+    int p_init = data.position();
+    int p = 0;
+    int pe = 0;
+    byte ch = 0;
+    while (data.position() != data.limit()) {
+      p = data.position();
+      pe = data.limit();
+      ch = data.get();
+      state = parse_url_char(ch);
+      switch(state) {
+        case dead:
+          return 1;
 
-  //TODO Skip http_parser_parse_url & http_parser_pause for now
+        /* Skip delimeters */
+        case req_schema_slash:
+        case req_schema_slash_slash:
+        case req_host_start:
+        case req_host_v6_start:
+        case req_host_v6_end:
+        case req_port_start:
+        case req_query_string_start:
+        case req_fragment_start:
+          continue;
 
+        case req_schema:
+          uf = UrlFields.UF_SCHEMA;
+          break;
+
+        case req_host:
+        case req_host_v6:
+          uf = UrlFields.UF_HOST;
+          break;
+
+        case req_port:
+          uf = UrlFields.UF_PORT;
+          break;
+
+        case req_path:
+          uf = UrlFields.UF_PATH;
+          break;
+
+        case req_query_string:
+          uf = UrlFields.UF_QUERY;
+          break;
+
+        case req_fragment:
+          uf = UrlFields.UF_FRAGMENT;
+          break;
+
+        default:
+          return 1;
+      }
+      /* Nothing's changed; soldier on */
+      if (uf == old_uf) {
+        u.field_data[uf.getIndex()].len++;//Not sure if using ordinal() is a good idea ...
+        continue;
+      }
+
+      u.field_data[uf.getIndex()].off = p - p_init;
+      u.field_data[uf.getIndex()].len = 1;
+
+      u.field_set |= (1 << uf.getIndex());
+      old_uf = uf;
+
+    }
+
+    /* CONNECT requests can only contain "hostname:port" */
+    if (is_connect && u.field_set != ((1 << UrlFields.UF_HOST.getIndex())|(1 << UrlFields.UF_PORT.getIndex()))) {
+      return 1;
+    }
+
+    /* Make sure we don't end somewhere unexpected */
+    switch (state) {
+      case req_host_v6_start:
+      case req_host_v6:
+      case req_host_v6_end:
+      case req_host:
+      case req_port_start:
+        return 1;
+      default:
+        break;
+    }
+
+    if (0 != (u.field_set & (1 << UrlFields.UF_PORT.getIndex()))) {
+      /* Don't bother with endp; we've already validated the string */
+      int v = strtoi(data, p + u.field_data[UrlFields.UF_PORT.getIndex()].off);
+
+      /* Ports have a max value of 2^16 */
+      if (v > 0xffff) {
+        return 1;
+      }
+
+      u.port = v;
+    }
+    
+    return 0;
+  }
+
+  //hacky reimplementation of srttoul, tailored for our simple needs
+  //we only need to parse port val, so no negative values etc
+  int strtoi(ByteBuffer data, int start_pos) {
+    data.position(start_pos);
+    byte ch;
+    String str = "";
+    while(true) {
+      ch = data.get();
+      if(Character.isWhitespace((char)ch)){
+        continue;
+      }
+      if(isDigit(ch)){
+        str = str + (char)ch; //TODO replace with something less hacky
+      }else{
+        break;
+      }
+    }
+    return Integer.parseInt(str);
+  }
+  
   boolean isDigit(byte b) {
     if (b >= 0x30 && b <=0x39) {
       return true;
@@ -1988,5 +2111,25 @@ return error(settings, "unhandled state", data);
     , transfer_encoding_chunked
     , connection_keep_alive
     , connection_close
+  }
+  enum UrlFields {
+      UF_SCHEMA(0)
+    , UF_HOST(1)
+    , UF_PORT(2)
+    , UF_PATH(3)
+    , UF_QUERY(4)
+    , UF_FRAGMENT(5)
+    , UF_MAX(6);
+
+
+    private final int index;
+
+    private UrlFields(int index) {
+      this.index = index;
+    }
+    public int getIndex() {
+      return index;
+    }
+
   }
 }
