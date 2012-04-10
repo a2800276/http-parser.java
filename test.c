@@ -2567,47 +2567,47 @@ create_large_chunked_message (int body_size_in_kb, const char* headers)
 char *
 quote(const char * orig) {
   if (!orig) return NULL;
-	size_t j, i, len = strlen(orig);
-	char * quoted = malloc(len == 0 ? 1 : len*2); // hm..
-	bzero(quoted, len == 0 ? 1 : len*2);
-	for (i=0, j=0; i!=len; ++i) {
-		switch (orig[i]){
-			case '\n':
-				quoted[j++] = '\\';
-				quoted[j++] = 'n';
-				break;
-			case '\r':
-				quoted[j++] = '\\';
-				quoted[j++] = 'r';
-				break;
-			case '"':
-				quoted[j++] = '\\';
-				quoted[j++] = '"';
-				break;
-			default  :
-				quoted[j++] = orig[i];
-		}
-	}
-	return quoted;
+  size_t j, i, len = strlen(orig);
+  char * quoted = malloc(len == 0 ? 1 : len*2); // hm..
+  bzero(quoted, len == 0 ? 1 : len*2);
+  for (i=0, j=0; i!=len; ++i) {
+    switch (orig[i]){
+      case '\n':
+        quoted[j++] = '\\';
+        quoted[j++] = 'n';
+        break;
+      case '\r':
+        quoted[j++] = '\\';
+        quoted[j++] = 'r';
+        break;
+      case '"':
+        quoted[j++] = '\\';
+        quoted[j++] = '"';
+        break;
+      default  :
+        quoted[j++] = orig[i];
+    }
+  }
+  return quoted;
 }
 
 void
 dump_message(const struct message * m)
 {
-	int i;
-	printf("name  :%s\n", m->name);
-	char * bla = quote(m->raw);
-	printf("raw   :\"%s\"\n", bla);
-	free(bla);
-	switch (m->type){
-		case HTTP_REQUEST:
-			printf("type  :HTTP_REQUEST\n");break;
-		case HTTP_RESPONSE:
-			printf("type  :HTTP_RESPONSE\n"); break;
-		case HTTP_BOTH:
-			printf("type  :HTTP_BOTH\n");
-	}
-	switch (m->method) {
+  int i;
+  printf("name  :%s\n", m->name);
+  char * bla = quote(m->raw);
+  printf("raw   :\"%s\"\n", bla);
+  free(bla);
+  switch (m->type){
+    case HTTP_REQUEST:
+      printf("type  :HTTP_REQUEST\n");break;
+    case HTTP_RESPONSE:
+      printf("type  :HTTP_RESPONSE\n"); break;
+    case HTTP_BOTH:
+      printf("type  :HTTP_BOTH\n");
+  }
+  switch (m->method) {
     case HTTP_DELETE:      printf("method: HTTP_DELETE\n");break;
     case HTTP_GET:         printf("method: HTTP_GET\n");break;
     case HTTP_HEAD:        printf("method: HTTP_HEAD\n");break;
@@ -2633,27 +2633,27 @@ dump_message(const struct message * m)
     case HTTP_NOTIFY:      printf("method: HTTP_NOTIFY\n"); break;
     case HTTP_SUBSCRIBE:   printf("method: HTTP_SUBSCRIBE\n"); break;
     case HTTP_UNSUBSCRIBE: printf("method: HTTP_UNSUBSCRIBE\n"); break;
-		default:
+    default:
       printf("method: UNKNOWN\n"); break;
-			break;
-	}
-	printf("status_code :%d\n", m->status_code);
+      break;
+  }
+  printf("status_code :%d\n", m->status_code);
   printf("request_path:%s\n", m->request_path);
   printf("request_url :%s\n", m->request_url);
   printf("fragment    :%s\n", m->fragment);
   printf("query_string:%s\n", m->query_string);
 
-	bla = quote(m->body);
+  bla = quote(m->body);
   printf("body        :\"%s\"\n", bla);
-	free(bla);
+  free(bla);
   printf("body_size   :%zu\n", m->body_size);
 
-	for (i=0; i!=m->num_headers; ++i){
-		printf("header_%d :{ \"%s\": \"%s\"}\n", i, m->headers[i][0], m->headers[i][1]);
-	}
+  for (i=0; i!=m->num_headers; ++i){
+    printf("header_%d :{ \"%s\": \"%s\"}\n", i, m->headers[i][0], m->headers[i][1]);
+  }
 
   printf("should_keep_alive         :%d\n", m->should_keep_alive);
-	bla = quote(m->upgrade);
+  bla = quote(m->upgrade);
   if (bla) {
     printf("upgrade                   :\"%s\"\n", bla);
   }
@@ -2664,7 +2664,7 @@ dump_message(const struct message * m)
 //  printf("headers_complete_cb_called:%d\n", m->headers_complete_cb_called);
 //  printf("message_complete_cb_called:%d\n", m->message_complete_cb_called);
 //  printf("message_complete_on_eof   :%d\n", m->message_complete_on_eof);
-	printf("\n");
+  printf("\n");
 }
 
 void
