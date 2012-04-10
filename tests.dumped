@@ -283,7 +283,7 @@ header_4 :{ "Upgrade": "WebSocket"}
 header_5 :{ "Sec-WebSocket-Key1": "4 @1  46546xW%0l 1 5"}
 header_6 :{ "Origin": "http://example.com"}
 should_keep_alive         :1
-upgrade                   :1
+upgrade                   :"Hot diggity dogg"
 http_major                :1
 http_minor                :1
 
@@ -301,6 +301,7 @@ body_size   :0
 header_0 :{ "User-agent": "Mozilla/1.1N"}
 header_1 :{ "Proxy-authorization": "basic aGVsbG86d29ybGQ="}
 should_keep_alive         :0
+upgrade                   :"some data\r\nand yet even more data"
 http_major                :1
 http_minor                :0
 
@@ -447,6 +448,7 @@ body_size   :0
 header_0 :{ "User-agent": "Mozilla/1.1N"}
 header_1 :{ "Proxy-authorization": "basic aGVsbG86d29ybGQ="}
 should_keep_alive         :0
+upgrade                   :""
 http_major                :1
 http_minor                :0
 

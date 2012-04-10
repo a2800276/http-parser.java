@@ -46,7 +46,6 @@ public class Requests {
       }
     }
     for (Message m : requests) {
-      p(m.name);
       test_message(m);
     }
     

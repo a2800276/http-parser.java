@@ -32,7 +32,10 @@ public class Message {
   List<Header> headers;
   boolean should_keep_alive;
 
-  boolean upgrade;
+  byte[] upgrade;
+  boolean upgrade() {
+    return null != upgrade;
+  }
 
   int http_major;
   int http_minor;
@@ -124,8 +127,13 @@ public class Message {
 
 
     p.execute(s, buf);
+    if (!p.upgrade) {
+      // call execute again, else parser can't know message is done
+      // if no content length is set.
+      p.execute(s, buf);
+    }
     if (!s.success) {
-      throw new RuntimeException("Test: "+name+"failed");
+      throw new RuntimeException("Test: "+name+" failed");
     }
   } // execute
 
@@ -140,7 +148,7 @@ public class Message {
        */
     p(name);
     for (int i = 2; i != raw.length; ++i) {
-      //  p(i);
+       // p(i);
       HTTPParser   p = new HTTPParser();
       TestSettings s = settings();
       ByteBuffer buf = ByteBuffer.wrap(raw);
@@ -148,13 +156,24 @@ public class Message {
       buf.limit(i);
 
       parse(p,s,buf);
+      if (!p.upgrade) {
+        buf.position(i);
+        buf.limit(olimit);
 
-      buf.position(i);
-      buf.limit(olimit);
-
-      parse(p,s,buf);
-      parse(p,s,buf);
-
+        parse(p,s,buf);
+        if (!p.upgrade) {
+          parse(p,s,buf);
+        } else {
+          if (!upgrade()) {
+            throw new RuntimeException("Test:"+name+"parsed as upgrade, is not");
+          }
+        }
+      
+      } else {
+        if (!upgrade()) {
+          throw new RuntimeException("Test:"+name+"parsed as upgrade, is not");
+        }
+      }
       if (!s.success) {
         p(this);
         throw new RuntimeException("Test: "+name+" failed");

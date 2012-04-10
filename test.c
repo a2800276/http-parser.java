@@ -2566,6 +2566,7 @@ create_large_chunked_message (int body_size_in_kb, const char* headers)
 
 char *
 quote(const char * orig) {
+  if (!orig) return NULL;
 	size_t j, i, len = strlen(orig);
 	char * quoted = malloc(len == 0 ? 1 : len*2); // hm..
 	bzero(quoted, len == 0 ? 1 : len*2);
@@ -2652,7 +2653,11 @@ dump_message(const struct message * m)
 	}
 
   printf("should_keep_alive         :%d\n", m->should_keep_alive);
-//  printf("upgrade                   :%d\n", m->upgrade);
+	bla = quote(m->upgrade);
+  if (bla) {
+    printf("upgrade                   :\"%s\"\n", bla);
+  }
+  free(bla);
   printf("http_major                :%d\n", m->http_major);
   printf("http_minor                :%d\n", m->http_minor);
 //  printf("message_begin_cb_called   :%d\n", m->message_begin_cb_called);
