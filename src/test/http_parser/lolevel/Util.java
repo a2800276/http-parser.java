@@ -41,6 +41,11 @@ public class Util {
       throw new RuntimeException("!");
     }
   }
+  static void check (int should, int is) {
+    if (should != is) {
+      throw new RuntimeException("should be: "+should+" is:"+is);
+    }
+  }
 
   static void test_message(Message mes) {
     int raw_len = mes.raw.length;
@@ -65,11 +70,12 @@ public class Util {
 
       read = parser.execute(settings, msg2);
       if (mes.upgrade && parser.upgrade) {
+      p("here");
         check(1 == mes.num_called);
         continue; 
       }
 
-      check(read == mes.raw.length - msg1len);
+      check( mes.raw.length - msg1len, read);
       
       ByteBuffer empty = Util.empty();
       read = parser.execute(settings, empty);

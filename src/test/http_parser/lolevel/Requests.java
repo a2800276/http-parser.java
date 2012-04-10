@@ -35,7 +35,7 @@ public class Requests {
   }
 
   public static void test () {
-    
+    p(Requests.class);    
     simple_tests();
     
     List<Message> all = TestLoaderNG.load("tests.dumped");
@@ -46,6 +46,7 @@ public class Requests {
       }
     }
     for (Message m : requests) {
+      p(m.name);
       test_message(m);
     }
     

@@ -14,6 +14,7 @@ public class WrongContentLength {
                                       "hello" +
                                       "hello_again";
   static void test () {
+    p(WrongContentLength.class);
     HTTPParser parser = new HTTPParser(ParserType.HTTP_REQUEST);
     ByteBuffer buf    = buffer(contentLength);
     
