@@ -465,7 +465,7 @@ return error(settings, "Invalid HTTP method", data);
             state = State.req_path;
             break;
           }
-          if (isAtoZ(ch)) {
+          if (isAtoZ(ch) || isDigit(ch)) {
             url_mark = p;
             state = State.req_schema;
             break;
