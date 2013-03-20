@@ -16,7 +16,7 @@ public class  HTTPParser {
 	HState header_state;
   boolean strict;
 
-	int index; 
+	int index;
 	int flags; // TODO
 
 	int nread;
@@ -35,19 +35,19 @@ public class  HTTPParser {
    * Should be checked when http_parser_execute() returns in addition to
    * error checking.
    */
-  public boolean upgrade; 
+  public boolean upgrade;
 
   /** PUBLIC **/
 	// TODO : this is used in c to maintain application state.
 	// is this even necessary? we have state in java ?
-	// consider 
+	// consider
   // Object data; /* A pointer to get hook to the "connection" or "socket" object */
-			
 
-  /* 
+
+  /*
    * technically we could combine all of these (except for url_mark) into one
    * variable, saving stack space, but it seems more clear to have them
-   * separated. 
+   * separated.
    */
   int header_field_mark = -1;
   int header_value_mark = -1;
@@ -55,7 +55,7 @@ public class  HTTPParser {
   int query_string_mark = -1;
   int path_mark = -1;
   int url_mark = -1;
-	
+
   /**
    * Construct a Parser for ParserType.HTTP_BOTH, meaning it
    * determines whether it's parsing a request or a response.
@@ -63,9 +63,9 @@ public class  HTTPParser {
 	public HTTPParser() {
 		this(ParserType.HTTP_BOTH);
 	}
-	
+
   /**
-   * Construct a Parser and initialise it to parse either 
+   * Construct a Parser and initialise it to parse either
    * requests or responses.
    */
 	public HTTPParser(ParserType type) {
@@ -84,7 +84,7 @@ public class  HTTPParser {
 				throw new HTTPException("can't happen, invalid ParserType enum");
 		}
 	}
-	
+
   /*
    * Utility to facilitate System.out.println style debugging (the way god intended)
    */
@@ -101,12 +101,12 @@ public class  HTTPParser {
     int p     = data.position();
     this.p_start = p; // this is used for pretty printing errors.
                       // and returning the amount of processed bytes.
-    
+
 
     // In case the headers don't provide information about the content
     // length, `execute` needs to be called with an empty buffer to
     // indicate that all the data has been send be the client/server,
-    // else there is no way of knowing the message is complete. 
+    // else there is no way of knowing the message is complete.
     int len = (data.limit() - data.position());
     if (0 == len) {
       //			if (State.body_identity_eof == state) {
@@ -129,7 +129,7 @@ public class  HTTPParser {
       }
     }
 
-		
+
     // in case the _previous_ call to the parser only has data to get to
     // the middle of certain fields, we need to update marks to point at
     // the beginning of the current buffer.
@@ -198,12 +198,12 @@ public class  HTTPParser {
           content_length = -1;
 
           settings.call_on_message_begin(this);
-          
-          if (H == ch) { 
+
+          if (H == ch) {
             state = State.res_or_resp_H;
           } else {
-            type   = ParserType.HTTP_REQUEST;  
-            method = start_req_method_assign(ch);     
+            type   = ParserType.HTTP_REQUEST;
+            method = start_req_method_assign(ch);
             if (null == method) {
               return error(settings, "invalid method", data);
             }
@@ -236,7 +236,7 @@ public class  HTTPParser {
           content_length = -1;
 
           settings.call_on_message_begin(this);
-          
+
           switch(ch) {
             case H:
               state = State.res_H;
@@ -302,7 +302,7 @@ return error(settings, "Not a digit", data);
 return error(settings, "invalid http major version: ", data);
           }
           break;
-          
+
         /* first digit of minor HTTP version */
         case res_first_http_minor:
           if (!isDigit(ch)) {
@@ -363,18 +363,22 @@ return error(settings, "not a valid status code", data);
           if (status_code > 999) {
 return error(settings, "ridiculous status code:", data);
           }
+
+          if (status_code > 99) {
+            settings.call_on_status_complete(this);
+          }
           break;
 
         case res_status:
           /* the human readable status. e.g. "NOT FOUND"
-           * we are not humans so just ignore this 
+           * we are not humans so just ignore this
            * we are not men, we are devo. */
 
            if (CR == ch) {
             state = State.res_line_almost_done;
             break;
            }
-           if (LF == ch) { 
+           if (LF == ch) {
             state = State.header_field_start;
             break;
            }
@@ -403,14 +407,14 @@ return error(settings, "invalid method", data);
           index  = 1;
           state  = State.req_method;
           break;
-        
+
 
 
         case req_method:
           if (0 == ch) {
 return error(settings, "NULL in method", data);
           }
-          
+
           byte [] arr = method.bytes;
 
           if (SPACE == ch && index == arr.length) {
@@ -447,7 +451,7 @@ return error(settings, "Invalid HTTP method", data);
 
           ++index;
           break;
-      
+
 
 
         /******************* URL *******************/
@@ -494,11 +498,11 @@ return error(settings, "invalid char in schema, not /", data);
           }
           state = State.req_host;
           break;
-        
+
         case req_host:
           if (isAtoZ(ch)) {
             break;
-          }	
+          }
           if (isDigit(ch) || DOT == ch || DASH == ch) break;
           switch (ch) {
             case COLON:
@@ -528,7 +532,7 @@ return error(settings, "host error in method line", data);
           if (isDigit(ch)) break;
           switch (ch) {
             case SLASH:
-              path_mark = p; 
+              path_mark = p;
               state = State.req_path;
               break;
             case SPACE:
@@ -547,7 +551,7 @@ return error(settings, "host error in method line", data);
 return error(settings, "invalid port", data);
           }
           break;
-      
+
         case req_path:
           if (normal_url_char[chi]) break;
           switch (ch) {
@@ -557,17 +561,17 @@ return error(settings, "invalid port", data);
 
               settings.call_on_path(this,data,path_mark, p-path_mark);
               path_mark = -1;
-              
+
               state = State.req_http_start;
               break;
 
             case CR:
               settings.call_on_url(this,data,url_mark, p-url_mark);
               url_mark = -1;
-              
+
               settings.call_on_path(this,data,path_mark, p-path_mark);
               path_mark = -1;
-              
+
               http_minor = 9;
               state = State.res_line_almost_done;
               break;
@@ -575,10 +579,10 @@ return error(settings, "invalid port", data);
             case LF:
               settings.call_on_url(this,data,url_mark, p-url_mark);
               url_mark = -1;
-              
+
               settings.call_on_path(this,data,path_mark, p-path_mark);
               path_mark = -1;
-              
+
               http_minor = 9;
               state = State.header_field_start;
               break;
@@ -586,22 +590,22 @@ return error(settings, "invalid port", data);
             case QMARK:
               settings.call_on_path(this,data,path_mark, p-path_mark);
               path_mark = -1;
-              
+
               state = State.req_query_string_start;
               break;
-            
+
             case HASH:
               settings.call_on_path(this,data,path_mark, p-path_mark);
               path_mark = -1;
-              
+
               state = State.req_fragment_start;
               break;
-            
+
             default:
 return error(settings, "unexpected char in path", data);
           }
           break;
-      
+
         case req_query_string_start:
           if (normal_url_char[chi]) {
             query_string_mark = p;
@@ -611,14 +615,14 @@ return error(settings, "unexpected char in path", data);
 
           switch (ch) {
             case QMARK: break;
-            case SPACE: 
+            case SPACE:
               settings.call_on_url(this, data, url_mark, p-url_mark);
               url_mark = -1;
               state = State.req_http_start;
               break;
             case CR:
               settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1; 
+              url_mark = -1;
               http_minor = 9;
               state = State.res_line_almost_done;
               break;
@@ -635,7 +639,7 @@ return error(settings, "unexpected char in path", data);
 return error(settings, "unexpected char in path", data);
           }
           break;
-        
+
         case req_query_string:
           if (normal_url_char[chi]) {
             break;
@@ -643,7 +647,7 @@ return error(settings, "unexpected char in path", data);
 
           switch (ch) {
             case QMARK: break; // allow extra '?' in query string
-            case SPACE: 
+            case SPACE:
               settings.call_on_url(this, data, url_mark, p-url_mark);
               url_mark = -1;
 
@@ -654,11 +658,11 @@ return error(settings, "unexpected char in path", data);
               break;
             case CR:
               settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1; 
+              url_mark = -1;
 
               settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
               query_string_mark = -1;
-              
+
               http_minor = 9;
               state = State.res_line_almost_done;
               break;
@@ -675,7 +679,7 @@ return error(settings, "unexpected char in path", data);
             case HASH:
               settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
               query_string_mark = -1;
-              
+
               state = State.req_fragment_start;
               break;
             default:
@@ -691,15 +695,15 @@ return error(settings, "unexpected char in path", data);
           }
 
           switch (ch) {
-            case SPACE: 
+            case SPACE:
               settings.call_on_url(this, data, url_mark, p-url_mark);
               url_mark = -1;
-     
+
               state = State.req_http_start;
               break;
             case CR:
               settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1; 
+              url_mark = -1;
 
               http_minor = 9;
               state = State.res_line_almost_done;
@@ -707,7 +711,7 @@ return error(settings, "unexpected char in path", data);
             case LF:
               settings.call_on_url(this,data,url_mark, p-url_mark);
               url_mark = -1;
-              
+
               http_minor = 9;
               state = State.header_field_start;
               break;
@@ -728,32 +732,32 @@ return error(settings, "unexpected char in path", data);
           }
 
           switch (ch) {
-            case SPACE: 
+            case SPACE:
               settings.call_on_url(this, data, url_mark, p-url_mark);
               url_mark = -1;
-          
+
               settings.call_on_fragment(this, data, fragment_mark, p-fragment_mark);
               fragment_mark = -1;
-              
+
               state = State.req_http_start;
               break;
             case CR:
               settings.call_on_url(this,data,url_mark, p-url_mark);
-              url_mark = -1; 
-              
+              url_mark = -1;
+
               settings.call_on_fragment(this, data, query_string_mark, p-query_string_mark);
               fragment_mark = -1;
-              
+
               http_minor = 9;
               state = State.res_line_almost_done;
               break;
             case LF:
               settings.call_on_url(this,data,url_mark, p-url_mark);
               url_mark = -1;
-              
+
               settings.call_on_fragment(this, data, query_string_mark, p-query_string_mark);
               fragment_mark = -1;
-              
+
               http_minor = 9;
               state = State.header_field_start;
               break;
@@ -836,7 +840,7 @@ return error(settings, "non digit in http major", data);
 return error(settings, "ridiculous http major", data);
           };
           break;
-        
+
         /* first digit of minor HTTP version */
         case req_first_http_minor:
           if (!isDigit(ch)) {
@@ -866,11 +870,11 @@ return error(settings, "non digit in http minor", data);
           http_minor *= 10;
           http_minor += (int)ch - 0x30;
 
-         
+
           if (http_minor > 999) {
 return error(settings, "ridiculous http minor", data);
           };
-   
+
           break;
 
         /* end of request line */
@@ -920,7 +924,7 @@ return error(settings, "invalid char in header:", data);
           state = State.header_field;
 
           switch (c) {
-            case C: 
+            case C:
               header_state = HState.C;
               break;
 
@@ -948,7 +952,7 @@ return error(settings, "invalid char in header:", data);
         case header_field:
         {
           c = token(ch);
-          if (0 != c) {  
+          if (0 != c) {
             switch (header_state) {
               case general:
                 break;
@@ -1057,7 +1061,7 @@ return error(settings, "Unknown Header State", data);
           if (CR == ch) {
             state = State.header_almost_done;
             settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
-            
+
             header_field_mark = -1;
             break;
           }
@@ -1065,7 +1069,7 @@ return error(settings, "Unknown Header State", data);
           if (ch == LF) {
             settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
             header_field_mark = -1;
-            
+
             state = State.header_field_start;
             break;
           }
@@ -1097,7 +1101,7 @@ return error(settings, "invalid header field", data);
           if (LF == ch) {
             settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
             header_value_mark = -1;
-            
+
             state = State.header_field_start;
             break;
           }
@@ -1123,7 +1127,7 @@ return error(settings, "invalid header field", data);
             case content_length:
               if (!isDigit(ch)) {
 return error(settings, "Content-Length not numeric", data);
-              } 
+              }
               content_length = (int)ch - 0x30;
               break;
 
@@ -1162,7 +1166,7 @@ return error(settings, "Content-Length not numeric", data);
           if (LF == ch) {
             settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
             header_value_mark = -1;
-            
+
             if (!header_almost_done(ch)) {
 return error(settings, "incorrect header ending, expection LF", data);
             }
@@ -1184,7 +1188,7 @@ return error(settings, "Shouldn't be here", data);
               }
               if (!isDigit(ch)) {
 return error(settings, "Content-Length not numeric", data);
-              } 
+              }
 
               content_length *= 10;
               content_length += (int)ch - 0x30;
@@ -1258,15 +1262,15 @@ return error(settings, "header not properly completed", data);
 
         /******************* Body *******************/
         case body_identity:
-          to_read = min(pe - p, content_length); //TODO change to use buffer? 
+          to_read = min(pe - p, content_length); //TODO change to use buffer?
 
           if (to_read > 0) {
-            settings.call_on_body(this, data, p, to_read); 
+            settings.call_on_body(this, data, p, to_read);
             data.position(p+to_read);
             content_length -= to_read;
             if (content_length == 0) {
               settings.call_on_message_complete(this);
-              state = new_message(); 
+              state = new_message();
             }
           }
           break;
@@ -1276,7 +1280,7 @@ return error(settings, "header not properly completed", data);
         case body_identity_eof:
           to_read = pe - p;  // TODO change to use buffer ?
           if (to_read > 0) {
-            settings.call_on_body(this, data, p, to_read); 
+            settings.call_on_body(this, data, p, to_read);
             data.position(p+to_read);
           }
           break;
@@ -1288,7 +1292,7 @@ return error(settings, "header not properly completed", data);
         case chunk_size_start:
           if (1 != this.nread) {
 return error(settings, "nread != 1 (chunking)", data);
-          
+
           }
           if (0 == (flags & F_CHUNKED)) {
 return error(settings, "not chunked", data);
@@ -1340,7 +1344,7 @@ return error(settings, "not chunked", data);
             break;
           }
           break;
-          
+
 
 
         case chunk_size_almost_done:
@@ -1407,12 +1411,12 @@ return error(settings, "chunk data terminated incorrectly, expected LF", data);
           state = State.chunk_size_start;
           break;
         /******************* Chunk *******************/
-    
-        
-        
+
+
+
         default:
 return error(settings, "unhandled state", data);
-          
+
       } // switch
     } // while
 
@@ -1421,15 +1425,15 @@ return error(settings, "unhandled state", data);
 
     /* Reaching this point assumes that we only received part of a
      * message, inform the callbacks about the progress made so far*/
-    
+
 	  settings.call_on_header_field(this, data, header_field_mark, p-header_field_mark);
     settings.call_on_header_value(this, data, header_value_mark, p-header_value_mark);
     settings.call_on_fragment    (this, data, fragment_mark,     p-fragment_mark);
     settings.call_on_query_string(this, data, query_string_mark, p-query_string_mark);
     settings.call_on_path        (this, data, path_mark,         p-path_mark);
     settings.call_on_url         (this, data, url_mark,          p-url_mark);
-    
-    return data.position()-this.p_start;	
+
+    return data.position()-this.p_start;
   } // execute
 
   int error (ParserSettings settings, String mes, ByteBuffer data) {
@@ -1487,23 +1491,23 @@ return error(settings, "unhandled state", data);
   byte token(byte b) {
     return (byte)tokens[b];
   }
-	
+
 
   HTTPMethod start_req_method_assign(byte c){
     switch (c) {
       case C: return HTTPMethod.HTTP_CONNECT;  /* or COPY, CHECKOUT */
-      case D: return HTTPMethod.HTTP_DELETE;  
-      case G: return HTTPMethod.HTTP_GET;     
-      case H: return HTTPMethod.HTTP_HEAD;    
-      case L: return HTTPMethod.HTTP_LOCK;    
+      case D: return HTTPMethod.HTTP_DELETE;
+      case G: return HTTPMethod.HTTP_GET;
+      case H: return HTTPMethod.HTTP_HEAD;
+      case L: return HTTPMethod.HTTP_LOCK;
       case M: return HTTPMethod.HTTP_MKCOL;    /* or MOVE, MKACTIVITY, MERGE, M-SEARCH */
-      case N: return HTTPMethod.HTTP_NOTIFY; 
-      case O: return HTTPMethod.HTTP_OPTIONS; 
+      case N: return HTTPMethod.HTTP_NOTIFY;
+      case O: return HTTPMethod.HTTP_OPTIONS;
       case P: return HTTPMethod.HTTP_POST;     /* or PROPFIND, PROPPATH, PUT */
       case R: return HTTPMethod.HTTP_REPORT;
       case S: return HTTPMethod.HTTP_SUBSCRIBE;
-      case T: return HTTPMethod.HTTP_TRACE;   
-      case U: return HTTPMethod.HTTP_UNLOCK; /* or UNSUBSCRIBE */ 
+      case T: return HTTPMethod.HTTP_TRACE;
+      case U: return HTTPMethod.HTTP_UNLOCK; /* or UNSUBSCRIBE */
     }
     return null; // ugh.
   }
@@ -1542,7 +1546,7 @@ return error(settings, "unhandled state", data);
       settings.call_on_headers_complete(this);
       settings.call_on_message_complete(this);
 
-      state = new_message(); 
+      state = new_message();
 
       return true;
     }
@@ -1552,7 +1556,7 @@ return error(settings, "unhandled state", data);
     if (0 != (flags & F_UPGRADE) || HTTPMethod.HTTP_CONNECT == method) {
       upgrade = true;
     }
-    
+
 
     /* Here we call the headers_complete callback. This is somewhat
      * different than other callbacks because if the user returns 1, we
@@ -1575,12 +1579,12 @@ return error(settings, "unhandled state", data);
      * parsingHeader) implementation ...
      */
 
-    /*TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO */ 
+    /*TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO */
     if (null != settings.on_headers_complete) {
       settings.call_on_headers_complete(this);
       //return;
     }
-    
+
     //        if (null != settings.on_headers_complete) {
     //          switch (settings.on_headers_complete.cb(parser)) {
     //            case 0:
@@ -1605,7 +1609,7 @@ return error(settings, "unhandled state", data);
 
     if (0 != (flags & F_SKIPBODY)) {
       settings.call_on_message_complete(this);
-      state = new_message(); 
+      state = new_message();
     } else if (0 != (flags & F_CHUNKED)) {
       /* chunked encoding - ignore Content-Length header */
       state = State.chunk_size_start;
@@ -1613,7 +1617,7 @@ return error(settings, "unhandled state", data);
       if (content_length == 0) {
         /* Content-Length header given but zero: Content-Length: 0\r\n */
         settings.call_on_message_complete(this);
-        state = new_message(); 
+        state = new_message();
       } else if (content_length > 0) {
         /* Content-Length header given and non-zero */
         state = State.body_identity;
@@ -1621,7 +1625,7 @@ return error(settings, "unhandled state", data);
         if (type == ParserType.HTTP_REQUEST || http_should_keep_alive()) {
           /* Assume content-length 0 - read the next */
           settings.call_on_message_complete(this);
-          state = new_message(); 
+          state = new_message();
         } else {
           /* Read body until EOF */
           state = State.body_identity_eof;
@@ -1635,7 +1639,7 @@ return error(settings, "unhandled state", data);
   final int min (int a, int b) {
     return a < b ? a : b;
   }
-  
+
   /* probably not the best place to hide this ... */
 	public boolean HTTP_PARSER_STRICT;
   State new_message() {
@@ -1646,7 +1650,7 @@ return error(settings, "unhandled state", data);
     }
 
   }
-	
+
   State start_state() {
     return type == ParserType.HTTP_REQUEST ? State.start_req : State.start_res;
   }
@@ -1696,28 +1700,28 @@ return error(settings, "unhandled state", data);
       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
     };
     static final byte [] CONNECTION = {
-      0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 
+      0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e,
     };
     static final byte [] PROXY_CONNECTION = {
-      0x50, 0x52, 0x4f, 0x58, 0x59, 0x2d, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 
+      0x50, 0x52, 0x4f, 0x58, 0x59, 0x2d, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e,
     };
     static final byte [] CONTENT_LENGTH = {
-      0x43, 0x4f, 0x4e, 0x54, 0x45, 0x4e, 0x54, 0x2d, 0x4c, 0x45, 0x4e, 0x47, 0x54, 0x48, 
+      0x43, 0x4f, 0x4e, 0x54, 0x45, 0x4e, 0x54, 0x2d, 0x4c, 0x45, 0x4e, 0x47, 0x54, 0x48,
     };
     static final byte [] TRANSFER_ENCODING = {
-      0x54, 0x52, 0x41, 0x4e, 0x53, 0x46, 0x45, 0x52, 0x2d, 0x45, 0x4e, 0x43, 0x4f, 0x44, 0x49, 0x4e, 0x47, 
+      0x54, 0x52, 0x41, 0x4e, 0x53, 0x46, 0x45, 0x52, 0x2d, 0x45, 0x4e, 0x43, 0x4f, 0x44, 0x49, 0x4e, 0x47,
     };
     static final byte [] UPGRADE = {
-      0x55, 0x50, 0x47, 0x52, 0x41, 0x44, 0x45, 
+      0x55, 0x50, 0x47, 0x52, 0x41, 0x44, 0x45,
     };
     static final byte [] CHUNKED = {
-      0x43, 0x48, 0x55, 0x4e, 0x4b, 0x45, 0x44, 
+      0x43, 0x48, 0x55, 0x4e, 0x4b, 0x45, 0x44,
     };
     static final byte [] KEEP_ALIVE = {
-      0x4b, 0x45, 0x45, 0x50, 0x2d, 0x41, 0x4c, 0x49, 0x56, 0x45, 
+      0x4b, 0x45, 0x45, 0x50, 0x2d, 0x41, 0x4c, 0x49, 0x56, 0x45,
     };
     static final byte [] CLOSE = {
-      0x43, 0x4c, 0x4f, 0x53, 0x45, 
+      0x43, 0x4c, 0x4f, 0x53, 0x45,
     };
 
     /* Tokens as defined by rfc 2616. Also lowercases them.
@@ -1837,23 +1841,23 @@ return error(settings, "unhandled state", data);
  *    encoded paths. This is out of spec, but clients generate this and most other
  *    HTTP servers support it. We should, too. */
 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-     true,    true,    true,    true,    true,    true,    true,    true, 
-    
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+     true,    true,    true,    true,    true,    true,    true,    true,
+
     };
 
     public static final byte A = 0x41;
@@ -1898,7 +1902,7 @@ return error(settings, "unhandled state", data);
 
   enum State {
 
-    dead               
+    dead
 
     , start_res_or_res
     , res_or_resp_H
