@@ -441,6 +441,8 @@ return error(settings, "NULL in method", data);
             method = HTTPMethod.HTTP_PROPFIND;
           } else if (1 == index && HTTPMethod.HTTP_POST     == method && U == ch) {
             method = HTTPMethod.HTTP_PUT;
+          } else if (1 == index && HTTPMethod.HTTP_POST     == method && A == ch) {
+            method = HTTPMethod.HTTP_PATCH;
           } else if (2 == index && HTTPMethod.HTTP_UNLOCK   == method && S == ch) {
             method = HTTPMethod.HTTP_UNSUBSCRIBE;
           } else if (4 == index && HTTPMethod.HTTP_PROPFIND == method && P == ch) {
@@ -1503,7 +1505,7 @@ return error(settings, "unhandled state", data);
       case M: return HTTPMethod.HTTP_MKCOL;    /* or MOVE, MKACTIVITY, MERGE, M-SEARCH */
       case N: return HTTPMethod.HTTP_NOTIFY;
       case O: return HTTPMethod.HTTP_OPTIONS;
-      case P: return HTTPMethod.HTTP_POST;     /* or PROPFIND, PROPPATH, PUT */
+      case P: return HTTPMethod.HTTP_POST;     /* or PROPFIND, PROPPATH, PUT, PATCH */
       case R: return HTTPMethod.HTTP_REPORT;
       case S: return HTTPMethod.HTTP_SUBSCRIBE;
       case T: return HTTPMethod.HTTP_TRACE;
