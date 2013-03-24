@@ -7,6 +7,7 @@ public class Test {
     TestHeaderOverflowError.test();
     TestNoOverflowLongBody.test();
     Responses.test();
+    ParseUrl.test();
     Requests.test();
     Upgrade.test();
     WrongContentLength.test();

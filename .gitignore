@@ -1,3 +1,4 @@
+core
 tags
 *.o
 test_g
@@ -7,4 +8,7 @@ test_g
 TAGS
 a.out
 .DS_Store
+test_fast
+*.mk
+*.Makefile
 lib/http-parser.jar
