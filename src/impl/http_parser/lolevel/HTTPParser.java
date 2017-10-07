@@ -1210,7 +1210,6 @@ return error(settings, "Content-Length not numeric", data);
           if (0 != (flags & F_TRAILING)) {
             /* End of a chunked request */
             state = new_message();
-            settings.call_on_headers_complete(this);
             settings.call_on_message_complete(this);
             break;
           }
