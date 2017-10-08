@@ -374,7 +374,6 @@ public class  HTTPParser {
 
           if (H == ch) {
             state = State.res_or_resp_H;
-            settings.call_on_message_begin(this);
           } else {
             type   = ParserType.HTTP_REQUEST;
             method = start_req_method_assign(ch);
@@ -384,6 +383,7 @@ public class  HTTPParser {
             index  = 1;
             state  = State.req_method;
           }
+          settings.call_on_message_begin(this);
           break;
 
 
@@ -1210,7 +1210,6 @@ return error(settings, "Content-Length not numeric", data);
           if (0 != (flags & F_TRAILING)) {
             /* End of a chunked request */
             state = new_message();
-            settings.call_on_headers_complete(this);
             settings.call_on_message_complete(this);
             break;
           }
